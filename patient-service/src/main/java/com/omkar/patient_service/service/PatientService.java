@@ -4,6 +4,7 @@ import com.omkar.patient_service.dto.PatientRequestDTO;
 import com.omkar.patient_service.dto.PatientResponseDTO;
 import com.omkar.patient_service.exception.EmailAlreadyExistsException;
 import com.omkar.patient_service.exception.PatientNotFoundException;
+import com.omkar.patient_service.grpc.BillingServiceGrpcClient;
 import com.omkar.patient_service.mapper.PatientMapper;
 import com.omkar.patient_service.model.Patient;
 import com.omkar.patient_service.repository.PatientRepository;
@@ -18,10 +19,12 @@ import java.util.stream.Collectors;
 public class PatientService {
     private final PatientRepository patientRepository;
     private final PatientMapper patientMapper;
+    private final BillingServiceGrpcClient billingServiceGrpcClient;
 
-    public PatientService(PatientRepository patientRepository, PatientMapper patientMapper) {
+    public PatientService(PatientRepository patientRepository, PatientMapper patientMapper, BillingServiceGrpcClient billingServiceGrpcClient) {
         this.patientRepository = patientRepository;
         this.patientMapper = patientMapper;
+        this.billingServiceGrpcClient = billingServiceGrpcClient;
     }
 
     public List<PatientResponseDTO> getPatients() {
@@ -34,6 +37,13 @@ public class PatientService {
             throw new EmailAlreadyExistsException("A patient with this email already exists " + patientRequestDTO.getEmail());
         }
         Patient newPatient = patientRepository.save(patientMapper.toModel(patientRequestDTO));
+
+        billingServiceGrpcClient.createBillingAccount(
+                newPatient.getId().toString(),
+                newPatient.getName(),
+                newPatient.getEmail()
+        );
+
         return patientMapper.toDTO(newPatient);
     }
 
