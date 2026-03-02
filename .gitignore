@@ -1,3 +1,4 @@
 .idea
 db_volumes
+.env
 CuraCloud.iml
