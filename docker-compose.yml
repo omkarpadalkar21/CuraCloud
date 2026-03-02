@@ -75,6 +75,16 @@ services:
     build:
       context: ./patient-service
       dockerfile: Dockerfile
+    environment:
+      BILLING_SERVICE_ADDRESS: ${BILLING_SERVICE_ADDRESS}
+      BILLING_SERVICE_GRPC_PORT: ${BILLING_SERVICE_GRPC_PORT}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: always
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     container_name: patient-service
     ports:
       - "4000:4000"
