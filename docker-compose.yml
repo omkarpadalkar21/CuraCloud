@@ -15,7 +15,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d db"]
+      test: [ "CMD-SHELL", "pg_isready -U admin -d db" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep -q Mode"]
+      test: [ "CMD-SHELL", "echo srvr | nc localhost 2181 | grep -q Mode" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -62,7 +62,7 @@ services:
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30"]
+      test: [ "CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30" ]
       interval: 15s
       timeout: 30s
       retries: 5
@@ -84,7 +84,7 @@ services:
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_SQL_INIT_MODE: always
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
     container_name: patient-service
     ports:
       - "4000:4000"
@@ -113,6 +113,23 @@ services:
     networks:
       - internal
 
+  # ─────────────────────────────────────────
+  # Analytics Service
+  # ─────────────────────────────────────────
+  analytics-service:
+    build:
+      context: ./analytics-service
+      dockerfile: Dockerfile
+    container_name: analytics-service
+    ports:
+      - "4002:4002"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
+    networks:
+      - internal
 # ─────────────────────────────────────────
 # Networks
 # ─────────────────────────────────────────
