@@ -1,5 +1,14 @@
 services:
 
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "4004:4004"
+    networks:
+      - internal
   # ─────────────────────────────────────────
   # PostgreSQL 17 — Patient Service DB
   # ─────────────────────────────────────────
@@ -86,8 +95,8 @@ services:
       SPRING_SQL_INIT_MODE: always
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
     container_name: patient-service
-    ports:
-      - "4000:4000"
+#    ports:
+#      - "4000:4000"
     depends_on:
       patient-service-db:
         condition: service_healthy
