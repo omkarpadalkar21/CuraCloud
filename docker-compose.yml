@@ -38,7 +38,7 @@ services:
     image: postgres:17-alpine
     container_name: auth-service-db
     environment:
-      POSTGRES_DB: auth_db
+      POSTGRES_DB: db
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: changemeinprod!
     volumes:
@@ -112,19 +112,43 @@ services:
       BILLING_SERVICE_ADDRESS: ${BILLING_SERVICE_ADDRESS}
       BILLING_SERVICE_GRPC_PORT: ${BILLING_SERVICE_GRPC_PORT}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
-      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_URL: ${PATIENT_SERVICE_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_SQL_INIT_MODE: always
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
     container_name: patient-service
-#    ports:
-#      - "4000:4000"
+    #    ports:
+    #      - "4000:4000"
     depends_on:
       patient-service-db:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # ─────────────────────────────────────────
+  # Auth Service
+  # ─────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATASOURCE_URL: ${AUTH_SERVICE_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_SQL_INIT_MODE: always
+      JWT_SECRET: ${JWT_SECRET}
+    container_name: auth-service
+    ports:
+      - "4005:4005"
+    depends_on:
+      auth-service-db:
         condition: service_healthy
     networks:
       - internal
