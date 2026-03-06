@@ -119,8 +119,6 @@ services:
       SPRING_SQL_INIT_MODE: always
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS}
     container_name: patient-service
-    #    ports:
-    #      - "4000:4000"
     depends_on:
       patient-service-db:
         condition: service_healthy
@@ -145,8 +143,6 @@ services:
       SPRING_SQL_INIT_MODE: always
       JWT_SECRET: ${JWT_SECRET}
     container_name: auth-service
-    ports:
-      - "4005:4005"
     depends_on:
       auth-service-db:
         condition: service_healthy
