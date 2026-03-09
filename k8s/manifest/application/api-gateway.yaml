@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: api-gateway
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - image: api-gateway:latest
+          name: api-gateway
+          ports:
+            - containerPort: 4004
+          imagePullPolicy: IfNotPresent
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api-gateway
+  name: api-gateway
+spec:
+  type: NodePort
+  ports:
+    - port: 4004
+      protocol: TCP
+      targetPort: 4004
+      nodePort: 30004
+  selector:
+    app: api-gateway

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: analytics-service
+  name: analytics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - image: analytics-service:latest
+          name: analytics-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4002
+          env:
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: analytics-service-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: analytics-service
+  name: analytics-service
+spec:
+  ports:
+    - port: 4002
+      protocol: TCP
+      targetPort: 4002
+  selector:
+    app: analytics-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-service-config
+data:
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"

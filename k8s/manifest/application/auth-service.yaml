@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth-service
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - image: auth-service:latest
+          name: auth-service
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_JPA_DATABASE_PLATFORM
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+            - name: SPRING_SQL_INIT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_SQL_INIT_MODE
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: JWT_SECRET
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: auth-service
+  name: auth-service
+spec:
+  ports:
+    - port: 4005
+      protocol: TCP
+      targetPort: 4005
+  selector:
+    app: auth-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://auth-service-db:5432/db"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_SQL_INIT_MODE: "always"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-service-secret
+type: Opaque
+data:
+  SPRING_DATASOURCE_USERNAME: YWRtaW4=
+  SPRING_DATASOURCE_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+  JWT_SECRET: emN4ekRoU0RMNnlLTldabCtTQUdnRFhGR1lQTFNURGkxSjBVK1dOOUtDM3JLZUVUeEtxbkk2dHJ5SzlkM080S050bGpOcTA4Y0pRRWlZRG9XTThrZEE9PQ==
