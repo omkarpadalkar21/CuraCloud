@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: billing-service
+  name: billing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-service
+  template:
+    metadata:
+      labels:
+        app: billing-service
+    spec:
+      containers:
+        - image: billing-service:latest
+          name: billing-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
+              name: http
+            - containerPort: 9001
+              name: grpc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: billing-service
+  name: billing-service
+spec:
+  ports:
+    - name: http
+      port: 4001
+      protocol: TCP
+      targetPort: 4001
+    - name: grpc
+      port: 9001
+      protocol: TCP
+      targetPort: 9001
+  selector:
+    app: billing-service

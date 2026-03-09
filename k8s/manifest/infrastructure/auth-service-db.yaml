@@ -1,0 +1,153 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth-service-db
+  name: auth-service-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service-db
+  template:
+    metadata:
+      labels:
+        app: auth-service-db
+    spec:
+      containers:
+        - image: postgres:17-alpine
+          name: postgres
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_DB
+                  name: auth-service-db-secret
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_USER
+                  name: auth-service-db-secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_PASSWORD
+                  name: auth-service-db-secret
+          volumeMounts:
+            - name: auth-service-db-storage
+              mountPath: /var/lib/postgresql/data
+            - name: auth-service-db-init-config
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: auth-service-db-storage
+          persistentVolumeClaim:
+            claimName: auth-service-db-pvc
+        - name: auth-service-db-init-config
+          configMap:
+            name: auth-service-db-init-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: auth-service-db
+  name: auth-service-db
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: auth-service-db
+
+
+---
+apiVersion: v1
+data:
+  POSTGRES_DB: ZGI=
+  POSTGRES_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+  POSTGRES_USER: YWRtaW4=
+kind: Secret
+metadata:
+  name: auth-service-db-secret
+
+---
+# Persistent volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: auth-service-db-pv
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /db_volumes/auth-service-db
+
+---
+# Persistent volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auth-service-db-pvc
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-db-init-config
+data:
+  init.sql:
+    -- Ensure the 'users' table exists
+    CREATE TABLE IF NOT EXISTS "users" (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL
+    );
+    
+    INSERT INTO "users" (id, email, password, role)
+    SELECT
+    '223e4567-e89b-12d3-a456-426614174006'::uuid,
+    'testuser@test.com',
+    '$2b$12$7hoRZfJrRKD2nIm2vHLs7OBETy.LWenXXMLKf99W8M4PUwO6KB7fu',
+    'ADMIN'
+    WHERE NOT EXISTS (
+    SELECT 1
+    FROM "users"
+    WHERE id = '223e4567-e89b-12d3-a456-426614174006'::uuid
+    OR email = 'testuser@test.com'
+    );

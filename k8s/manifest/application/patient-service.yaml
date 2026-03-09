@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: patient-service
+  name: patient-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - image: patient-service:latest
+          name: patient-service
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BILLING_SERVICE_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: BILLING_SERVICE_ADDRESS
+            - name: BILLING_SERVICE_GRPC_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: BILLING_SERVICE_GRPC_PORT
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_JPA_DATABASE_PLATFORM
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+            - name: SPRING_SQL_INIT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_SQL_INIT_MODE
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: patient-service-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: patient-service-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: patient-service
+  name: patient-service
+spec:
+  ports:
+    - port: 4000
+      protocol: TCP
+      targetPort: 4000
+  selector:
+    app: patient-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patient-service-config
+data:
+  BILLING_SERVICE_ADDRESS: "billing-service"
+  BILLING_SERVICE_GRPC_PORT: "9001"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://patient-service-db:5432/db"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_SQL_INIT_MODE: "always"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: patient-service-secret
+type: Opaque
+data:
+  # admin (base64)
+  SPRING_DATASOURCE_USERNAME: YWRtaW4=
+  # changemeinprod! (base64)
+  SPRING_DATASOURCE_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
