@@ -1,0 +1,24 @@
+# Cluster 1 — hosts API Gateway, Patient Service, Auth Service
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: curacloud-cluster1
+networking:
+  podSubnet: "10.10.0.0/16" # Unique pod CIDR per cluster
+  serviceSubnet: "10.110.0.0/16" # Unique service CIDR per cluster
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+  - role: worker
+  - role: worker
+
+# Why unique subnets?
+# Each cluster must have non-overlapping Pod and Service CIDRs. This prevents IP conflicts when traffic flows between clusters via the east-west gateway.
+
