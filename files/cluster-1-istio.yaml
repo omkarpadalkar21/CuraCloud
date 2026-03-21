@@ -1,0 +1,55 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: curacloud-mesh
+      multiCluster:
+        clusterName: curacloud-cluster-1
+      network: network1
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+  # BUG FIX #1: East-West Gateway was completely missing.
+  # Without this, there is no component in cluster-1 that can accept
+  # cross-cluster traffic arriving from cluster-2, and no way to forward
+  # outbound traffic to cluster-2 services.
+  components:
+    ingressGateways:
+      - name: istio-eastwestgateway
+        label:
+          istio: eastwestgateway
+          app: istio-eastwestgateway
+          # This label tells istiod which network this gateway belongs to,
+          # so it is included in the correct meshNetworks entry.
+          topology.istio.io/network: network1
+        enabled: true
+        k8s:
+          env:
+            # sni-dnat mode makes the gateway perform SNI-based routing,
+            # forwarding traffic to the correct backend service without
+            # terminating TLS. Required for multi-network Istio.
+            - name: ISTIO_META_ROUTER_MODE
+              value: "sni-dnat"
+            # Tells the gateway proxy which networks' endpoints it should
+            # be able to see and forward to.
+            - name: ISTIO_META_REQUESTED_NETWORK_VIEW
+              value: "network1"
+          service:
+            type: LoadBalancer
+            ports:
+              - name: status-port
+                port: 15021
+                targetPort: 15021
+              - name: tls
+                port: 15443
+                targetPort: 15443
+              - name: tls-istiod
+                port: 15012
+                targetPort: 15012
+              - name: tls-webhook
+                port: 15017
+                targetPort: 15017

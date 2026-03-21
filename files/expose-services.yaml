@@ -1,0 +1,39 @@
+# BUG FIX #2: This Gateway resource was completely missing from the project.
+#
+# Without it, the east-west gateway pods have no instructions on what to do
+# with incoming TLS traffic on port 15443. They will accept the TCP connection
+# but immediately close it, making ALL cross-cluster service calls fail.
+#
+# This Gateway uses AUTO_PASSTHROUGH mode which tells the EWG to inspect the
+# SNI header of every incoming TLS connection and forward it transparently to
+# the matching service endpoint — without terminating the TLS session itself.
+# Istio encodes the target service's FQDN and cluster into the SNI string
+# when a sidecar proxy initiates a cross-cluster call, so the EWG can route
+# it to the right backend purely from that SNI value.
+#
+# APPLY THIS TO BOTH CLUSTERS:
+#   kubectl apply --context=cluster-1 -f expose-services.yaml
+#   kubectl apply --context=cluster-2 -f expose-services.yaml
+#
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cross-network-gateway
+  namespace: istio-system
+spec:
+  selector:
+    # Targets the east-west gateway pods created by the IstioOperator above.
+    istio: eastwestgateway
+  servers:
+    - port:
+        number: 15443
+        name: tls
+        protocol: TLS
+      tls:
+        # AUTO_PASSTHROUGH: the gateway forwards the TLS stream as-is
+        # based on the SNI value. The destination sidecar terminates mTLS.
+        mode: AUTO_PASSTHROUGH
+      hosts:
+        # "*.local" matches all Kubernetes service FQDNs
+        # (e.g. billing-service.default.svc.cluster.local)
+        - "*.local"

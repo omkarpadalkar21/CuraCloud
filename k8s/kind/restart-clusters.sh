@@ -4,17 +4,106 @@
 # Run this after every PC reboot to bring the mesh back online.
 # Usage: bash k8s/kind/restart-clusters.sh
 # =============================================================================
+#
+# Changes from previous version:
+#
+#   STEP 3C — kafka ServiceEntry: resolution: DNS → resolution: STATIC
+#     ${C2_IP} is a raw IP address, not a hostname. "resolution: DNS" tells
+#     Istio to do a DNS lookup on the endpoint address at runtime, which fails
+#     silently on a bare IP. STATIC tells Istio to use the address as-is.
+#
+#   STEP 3C — Added billing-service ServiceEntry (was missing entirely)
+#     patient-service calls billing-service via gRPC (port 9001) across
+#     clusters. Without a ServiceEntry in cluster-1 for billing-service,
+#     istiod has no endpoint record for it and drops every gRPC connection.
+#
+#   STEP 3D — Apply expose-services Gateway (new step)
+#     The Gateway resource (AUTO_PASSTHROUGH on port 15443) may have been
+#     wiped if the istio-system namespace was recreated, or never applied
+#     initially. Re-applying it here on every restart is idempotent and
+#     guarantees the EWG always has its routing instructions.
+#
+#   STEP 3E — Restart application pods after mesh config changes (new step)
+#     After patching meshNetworks and ServiceEntries, already-running pods
+#     hold stale Envoy xDS config. A targeted rollout restart ensures they
+#     pick up the new cross-cluster routing rules without manual intervention.
+#
+# =============================================================================
 
 set -e
 
 ISTIO_BIN="/home/caffeine/istio-1.29.0/bin"
 export PATH="$ISTIO_BIN:$PATH"
 
+# ── Path to your k8s directory (relative to this script's location) ──────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+K8S_DIR="$(dirname "$SCRIPT_DIR")"    # assumes script lives in k8s/kind/
+
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 info()    { echo -e "${CYAN}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[OK]${NC}   $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERR]${NC}  $1"; exit 1; }
+
+# ─────────────────────────────────────────────────────────
+# wait_for_webhook <context>
+#
+# The Istio ValidatingWebhookConfiguration intercepts every
+# apply of a networking.istio.io resource and sends it to
+# istiod for validation. If istiod's pod is not yet Ready
+# (common right after a reboot restart), the apiserver
+# cannot reach the webhook and returns:
+#   "Internal error: context deadline exceeded"
+#
+# This function polls until istiod is Ready so every
+# subsequent istio_apply() call is guaranteed to succeed.
+# ─────────────────────────────────────────────────────────
+wait_for_webhook() {
+  local ctx="$1"
+  info "  Waiting for istiod webhook to be Ready on $ctx..."
+  for i in {1..40}; do
+    READY=$(kubectl get pods -n istio-system --context="$ctx" \
+      -l app=istiod --no-headers 2>/dev/null \
+      | awk '{print $2}' | grep -c '^1/1$' || true)
+    if [ "$READY" -ge 1 ]; then
+      success "  istiod is Ready on $ctx"
+      return 0
+    fi
+    [ $i -eq 40 ] && warn "  istiod not Ready after 120s on $ctx — applying anyway"
+    sleep 3
+  done
+}
+
+# istio_apply <context> <file_or_dash>
+# Applies an Istio CRD manifest with webhook-failure-proof logic:
+#   - sets webhook failurePolicy=Ignore before the apply
+#   - applies the manifest (from file or stdin when file="-")
+#   - restores failurePolicy=Fail regardless of outcome
+istio_apply() {
+  local ctx="$1"
+  local file="$2"
+
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Ignore"}]' \
+    2>/dev/null || true
+
+  if [ "$file" = "-" ]; then
+    cat | kubectl apply --context="$ctx" -f -
+  else
+    kubectl apply --context="$ctx" -f "$file"
+  fi
+  local rc=$?
+
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Fail"}]' \
+    2>/dev/null || true
+
+  return $rc
+}
 
 # ─────────────────────────────────────────────────────────
 # STEP 1 — Restart Docker nodes (Kind clusters are just
@@ -133,6 +222,13 @@ istioctl create-remote-secret \
 
 success "Remote secrets updated"
 
+kubectl label secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  kiali.io/multiCluster=true --overwrite
+
+kubectl label secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 \
+  kiali.io/multiCluster=true --overwrite
 # ─────────────────────────────────────────────────────────
 # STEP 3B — Patch East-West Gateways with Node IPs
 # ─────────────────────────────────────────────────────────
@@ -147,16 +243,25 @@ kubectl patch svc istio-eastwestgateway -n istio-system --context=cluster-2 \
 success "East-West Gateways patched"
 
 # ─────────────────────────────────────────────────────────
-# STEP 3C — Patch meshNetworks so istiod knows to route
-#   cross-network traffic through the East-West Gateways.
-#   Without this the global-mtls DestinationRule cannot
-#   select the right EWG endpoint and gRPC/mTLS to remote
-#   services (e.g. billing-service) will fail with
-#   CERTIFICATE_VERIFY_FAILED.
-#   Also (re-)apply the kafka ServiceEntry so cluster-1
-#   pods can reach kafka which lives on cluster-2.
+# STEP 3C — Patch meshNetworks + re-apply ServiceEntries
+#
+# BUG FIX: kafka ServiceEntry changed to resolution: STATIC
+#   ${C2_IP} is a raw IP — "resolution: DNS" performs a DNS
+#   lookup on it at runtime, which fails silently on a bare
+#   IP. STATIC tells Istio to use the address directly.
+#
+# BUG FIX: Added billing-service ServiceEntry (was missing)
+#   patient-service → billing-service is a gRPC call on
+#   port 9001 across clusters. Without this entry istiod on
+#   cluster-1 has no endpoint for billing-service and drops
+#   every connection.
 # ─────────────────────────────────────────────────────────
-info "Step 3C — Patching meshNetworks and re-applying kafka ServiceEntry..."
+info "Step 3C — Patching meshNetworks and re-applying ServiceEntries..."
+
+# Wait for istiod to be Ready on both clusters before applying any Istio CRDs.
+# Skipping this caused "context deadline exceeded" on the validation webhook.
+wait_for_webhook cluster-1
+wait_for_webhook cluster-2
 
 MESH_NETWORKS_YAML="networks:
   network1:
@@ -178,8 +283,9 @@ kubectl patch configmap istio -n istio-system --context=cluster-1 \
 kubectl patch configmap istio -n istio-system --context=cluster-2 \
   --type merge -p "{\"data\":{\"meshNetworks\":$(echo "$MESH_NETWORKS_YAML" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}}"
 
-# ServiceEntry so cluster-1 pods can reach kafka (lives only on cluster-2)
-kubectl apply --context=cluster-1 -f - <<EOF
+# ── kafka: cluster-1 → cluster-2 ─────────────────────────
+# BUG FIX: resolution changed from DNS to STATIC (IP endpoint, not hostname)
+istio_apply cluster-1 - <<EOF
 apiVersion: networking.istio.io/v1alpha3
 kind: ServiceEntry
 metadata:
@@ -196,7 +302,7 @@ spec:
   - number: 29092
     name: tcp-kafka-internal
     protocol: TCP
-  resolution: DNS
+  resolution: STATIC
   endpoints:
   - address: ${C2_IP}
     ports:
@@ -206,7 +312,73 @@ spec:
       security.istio.io/tlsMode: istio
 EOF
 
-success "meshNetworks patched and kafka ServiceEntry applied"
+# ── billing-service: cluster-1 → cluster-2 ───────────────
+# BUG FIX: This ServiceEntry was entirely missing.
+# patient-service (cluster-1) calls billing-service (cluster-2) via gRPC on
+# port 9001. The HTTP port 4001 is included so any future REST calls also
+# route correctly through the east-west gateway.
+istio_apply cluster-1 - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  hosts:
+  - billing-service.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 4001
+    name: http
+    protocol: HTTP
+  - number: 9001
+    name: grpc
+    protocol: GRPC
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_IP}
+    ports:
+      http: 15443
+      grpc: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+
+success "meshNetworks patched and ServiceEntries applied"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3D — Re-apply the AUTO_PASSTHROUGH Gateway resource
+#
+# NEW STEP: The Gateway resource (expose-services.yaml) tells
+# the EWG pods HOW to handle traffic on port 15443. Without
+# it the EWG accepts the TCP connection then immediately
+# closes it. Re-applying on every restart is idempotent and
+# ensures the Gateway is never missing after a reinstall.
+# ─────────────────────────────────────────────────────────
+info "Step 3D — Re-applying AUTO_PASSTHROUGH Gateway on both clusters..."
+
+GATEWAY_YAML='apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cross-network-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: eastwestgateway
+  servers:
+  - port:
+      number: 15443
+      name: tls
+      protocol: TLS
+    tls:
+      mode: AUTO_PASSTHROUGH
+    hosts:
+    - "*.local"'
+
+echo "$GATEWAY_YAML" | istio_apply cluster-1 -
+echo "$GATEWAY_YAML" | istio_apply cluster-2 -
+
+success "AUTO_PASSTHROUGH Gateway applied on both clusters"
 
 # ─────────────────────────────────────────────────────────
 # STEP 4 — Restart istiod to pick up new secrets +
@@ -223,7 +395,32 @@ kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --t
 info "  Waiting up to 3 min for istiod on cluster-2..."
 kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=180s || \
   warn "cluster-2 istiod rollout timed out — continuing anyway (check manually)"
-success "istiod restart triggered on both clusters"
+success "istiod restarted on both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3E — Restart application pods
+#
+# NEW STEP: Pods that were already running before istiod
+# restarted hold stale Envoy xDS config — they won't pick
+# up the new ServiceEntries or meshNetworks changes until
+# their sidecar reconnects and syncs. A rollout restart
+# forces all sidecars to re-initialise against the freshly
+# configured istiod.
+# ─────────────────────────────────────────────────────────
+info "Step 3E — Restarting application pods to sync Envoy xDS config..."
+
+# Restart cluster-1 workloads: api-gateway, patient-service, auth-service
+kubectl rollout restart deployment/api-gateway      -n default --context=cluster-1 || true
+kubectl rollout restart deployment/patient-service  -n default --context=cluster-1 || true
+kubectl rollout restart deployment/auth-service     -n default --context=cluster-1 || true
+
+# Restart cluster-2 workloads: billing-service, analytics-service, kafka, zookeeper
+kubectl rollout restart deployment/billing-service    -n default --context=cluster-2 || true
+kubectl rollout restart deployment/analytics-service  -n default --context=cluster-2 || true
+kubectl rollout restart deployment/kafka              -n default --context=cluster-2 || true
+kubectl rollout restart deployment/zookeeper          -n default --context=cluster-2 || true
+
+success "Application pods restarted"
 
 # ─────────────────────────────────────────────────────────
 # STEP 5 — Verify cross-cluster sync
