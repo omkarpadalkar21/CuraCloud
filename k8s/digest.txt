@@ -1,0 +1,1253 @@
+Directory structure:
+└── k8s/
+    ├── istio/
+    │   ├── cluster-1-istio.yaml
+    │   ├── cluster-2-istio.yaml
+    │   └── mesh-networks-patch.sh
+    ├── kind/
+    │   ├── create-kind-cluster.sh
+    │   ├── kind-cluster-1-config.yaml
+    │   ├── kind-cluster-2-config.yaml
+    │   ├── kind-cluster1-config.yaml
+    │   ├── kind-cluster2-config.yaml
+    │   ├── kind-config.yaml
+    │   └── restart-clusters.sh
+    └── manifest/
+        ├── application/
+        │   ├── analytics-service.yaml
+        │   ├── api-gateway.yaml
+        │   ├── auth-service.yaml
+        │   ├── billing-service.yaml
+        │   └── patient-service.yaml
+        └── infrastructure/
+            ├── auth-service-db.yaml
+            ├── kafka.yaml
+            ├── patient-service-db.yaml
+            └── zookeeper.yaml
+
+================================================
+FILE: istio/cluster-1-istio.yaml
+================================================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: curacloud-mesh
+      multiCluster:
+        clusterName: curacloud-cluster-1
+      network: network1
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+
+
+================================================
+FILE: istio/cluster-2-istio.yaml
+================================================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: curacloud-mesh
+      multiCluster:
+        clusterName: curacloud-cluster-2
+      network: network2
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+
+
+================================================
+FILE: istio/mesh-networks-patch.sh
+================================================
+#!/usr/bin/env bash
+# Fix cross-cluster communication:
+# 1. Patch meshNetworks so istiod knows to route via East-West Gateways
+# 2. Add ServiceEntry for kafka on cluster-1
+# 3. Restart istiod
+
+set -e
+
+C1_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-1 \
+  -o jsonpath='{.spec.externalIPs[0]}')
+C2_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-2 \
+  -o jsonpath='{.spec.externalIPs[0]}')
+
+echo "[INFO] cluster-1 EWG IP: $C1_EWG"
+echo "[INFO] cluster-2 EWG IP: $C2_EWG"
+
+# ── 1. Patch meshNetworks on cluster-1 ────────────────────────────────────────
+# cluster-1 knows its own network1 via its EWG, and network2 via cluster-2's EWG
+kubectl patch configmap istio -n istio-system --context=cluster-1 \
+  --type merge -p "{
+    \"data\": {
+      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
+    }
+  }"
+echo "[OK] meshNetworks patched on cluster-1"
+
+# ── 2. Patch meshNetworks on cluster-2 ────────────────────────────────────────
+kubectl patch configmap istio -n istio-system --context=cluster-2 \
+  --type merge -p "{
+    \"data\": {
+      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
+    }
+  }"
+echo "[OK] meshNetworks patched on cluster-2"
+
+# ── 3. ServiceEntry for kafka on cluster-1 ────────────────────────────────────
+# Without this, cluster-1 pods can't resolve "kafka" (it only exists in cluster-2)
+kubectl apply --context=cluster-1 -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  hosts:
+  - kafka.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 9092
+    name: tcp-kafka
+    protocol: TCP
+  - number: 29092
+    name: tcp-kafka-internal
+    protocol: TCP
+  resolution: DNS
+  endpoints:
+  - address: ${C2_EWG}
+    ports:
+      tcp-kafka: 15443
+      tcp-kafka-internal: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+echo "[OK] ServiceEntry 'kafka-cluster2' created on cluster-1"
+
+# ── 4. Restart istiod on both clusters ────────────────────────────────────────
+echo "[INFO] Restarting istiod on both clusters to pick up meshNetworks..."
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-1
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-2
+
+echo "[INFO] Waiting for istiod on cluster-1..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --timeout=120s
+echo "[INFO] Waiting for istiod on cluster-2..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=120s
+
+echo ""
+echo "[OK] Done! Verifying remote cluster sync..."
+sleep 10
+echo "  cluster-1 view:"
+istioctl remote-clusters --context=cluster-1
+echo "  cluster-2 view:"
+istioctl remote-clusters --context=cluster-2
+
+
+
+================================================
+FILE: kind/create-kind-cluster.sh
+================================================
+kind create cluster --name curacloud --config kind-config.yaml
+
+
+
+================================================
+FILE: kind/kind-cluster-1-config.yaml
+================================================
+# Cluster 1 — hosts API Gateway, Patient Service, Auth Service
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: curacloud-cluster1
+networking:
+  podSubnet: "10.10.0.0/16" # Unique pod CIDR per cluster
+  serviceSubnet: "10.110.0.0/16" # Unique service CIDR per cluster
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+  - role: worker
+  - role: worker
+
+# Why unique subnets?
+# Each cluster must have non-overlapping Pod and Service CIDRs. This prevents IP conflicts when traffic flows between clusters via the east-west gateway.
+
+
+
+
+================================================
+FILE: kind/kind-cluster-2-config.yaml
+================================================
+# Cluster 2 — hosts Billing Service, Analytics Service, Kafka, Zookeeper
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: curacloud-cluster2
+networking:
+  podSubnet: "10.20.0.0/16" # Different from Cluster 1
+  serviceSubnet: "10.120.0.0/16" # Different from Cluster 1
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 81 # Different host port to avoid conflict
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 444 # Different host port to avoid conflict
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+  - role: worker
+  - role: worker
+
+
+
+================================================
+FILE: kind/kind-cluster1-config.yaml
+================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  podSubnet: "10.10.0.0/16"
+  serviceSubnet: "10.110.0.0/16"
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 443
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+
+
+
+================================================
+FILE: kind/kind-cluster2-config.yaml
+================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+networking:
+  podSubnet: "10.20.0.0/16"
+  serviceSubnet: "10.120.0.0/16"
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 81
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 444
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+
+
+
+================================================
+FILE: kind/kind-config.yaml
+================================================
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 80
+        listenAddress: "127.0.0.1"
+        protocol: TCP
+
+
+
+================================================
+FILE: kind/restart-clusters.sh
+================================================
+[Binary file]
+
+
+================================================
+FILE: manifest/application/analytics-service.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: analytics-service
+  name: analytics-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: analytics-service
+  template:
+    metadata:
+      labels:
+        app: analytics-service
+    spec:
+      containers:
+        - image: analytics-service:latest
+          name: analytics-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4002
+          env:
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: analytics-service-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: analytics-service
+  name: analytics-service
+spec:
+  ports:
+    - port: 4002
+      protocol: TCP
+      targetPort: 4002
+  selector:
+    app: analytics-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: analytics-service-config
+data:
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
+
+
+================================================
+FILE: manifest/application/api-gateway.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: api-gateway
+  name: api-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - image: api-gateway:latest
+          name: api-gateway
+          ports:
+            - containerPort: 4004
+          imagePullPolicy: IfNotPresent
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: api-gateway
+  name: api-gateway
+spec:
+  type: NodePort
+  ports:
+    - port: 4004
+      protocol: TCP
+      targetPort: 4004
+      nodePort: 30004
+  selector:
+    app: api-gateway
+
+
+
+================================================
+FILE: manifest/application/auth-service.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth-service
+  name: auth-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - image: auth-service:latest
+          name: auth-service
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_JPA_DATABASE_PLATFORM
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+            - name: SPRING_SQL_INIT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: SPRING_SQL_INIT_MODE
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-service-secret
+                  key: JWT_SECRET
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: auth-service
+  name: auth-service
+spec:
+  ports:
+    - port: 4005
+      protocol: TCP
+      targetPort: 4005
+  selector:
+    app: auth-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://auth-service-db:5432/db"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_SQL_INIT_MODE: "always"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-service-secret
+type: Opaque
+data:
+  SPRING_DATASOURCE_USERNAME: YWRtaW4=
+  SPRING_DATASOURCE_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+  JWT_SECRET: emN4ekRoU0RMNnlLTldabCtTQUdnRFhGR1lQTFNURGkxSjBVK1dOOUtDM3JLZUVUeEtxbkk2dHJ5SzlkM080S050bGpOcTA4Y0pRRWlZRG9XTThrZEE9PQ==
+
+
+
+================================================
+FILE: manifest/application/billing-service.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: billing-service
+  name: billing-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing-service
+  template:
+    metadata:
+      labels:
+        app: billing-service
+    spec:
+      containers:
+        - image: billing-service:latest
+          name: billing-service
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
+              name: http
+            - containerPort: 9001
+              name: grpc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: billing-service
+  name: billing-service
+spec:
+  ports:
+    - name: http
+      port: 4001
+      protocol: TCP
+      targetPort: 4001
+    - name: grpc
+      port: 9001
+      protocol: TCP
+      targetPort: 9001
+  selector:
+    app: billing-service
+
+
+
+================================================
+FILE: manifest/application/patient-service.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: patient-service
+  name: patient-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - image: patient-service:latest
+          name: patient-service
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BILLING_SERVICE_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: BILLING_SERVICE_ADDRESS
+            - name: BILLING_SERVICE_GRPC_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: BILLING_SERVICE_GRPC_PORT
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_DATASOURCE_URL
+            - name: SPRING_JPA_DATABASE_PLATFORM
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_JPA_DATABASE_PLATFORM
+            - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_JPA_HIBERNATE_DDL_AUTO
+            - name: SPRING_SQL_INIT_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_SQL_INIT_MODE
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: patient-service-config
+                  key: SPRING_KAFKA_BOOTSTRAP_SERVERS
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: patient-service-secret
+                  key: SPRING_DATASOURCE_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: patient-service-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: patient-service
+  name: patient-service
+spec:
+  ports:
+    - port: 4000
+      protocol: TCP
+      targetPort: 4000
+  selector:
+    app: patient-service
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patient-service-config
+data:
+  BILLING_SERVICE_ADDRESS: "billing-service"
+  BILLING_SERVICE_GRPC_PORT: "9001"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://patient-service-db:5432/db"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_SQL_INIT_MODE: "always"
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: patient-service-secret
+type: Opaque
+data:
+  # admin (base64)
+  SPRING_DATASOURCE_USERNAME: YWRtaW4=
+  # changemeinprod! (base64)
+  SPRING_DATASOURCE_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+
+
+
+================================================
+FILE: manifest/infrastructure/auth-service-db.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: auth-service-db
+  name: auth-service-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service-db
+  template:
+    metadata:
+      labels:
+        app: auth-service-db
+    spec:
+      containers:
+        - image: postgres:17-alpine
+          name: postgres
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_DB
+                  name: auth-service-db-secret
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_USER
+                  name: auth-service-db-secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_PASSWORD
+                  name: auth-service-db-secret
+          volumeMounts:
+            - name: auth-service-db-storage
+              mountPath: /var/lib/postgresql/data
+            - name: auth-service-db-init-config
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: auth-service-db-storage
+          persistentVolumeClaim:
+            claimName: auth-service-db-pvc
+        - name: auth-service-db-init-config
+          configMap:
+            name: auth-service-db-init-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: auth-service-db
+  name: auth-service-db
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: auth-service-db
+
+
+---
+apiVersion: v1
+data:
+  POSTGRES_DB: ZGI=
+  POSTGRES_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+  POSTGRES_USER: YWRtaW4=
+kind: Secret
+metadata:
+  name: auth-service-db-secret
+
+---
+# Persistent volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: auth-service-db-pv
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /db_volumes/auth-service-db
+
+---
+# Persistent volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: auth-service-db-pvc
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-db-init-config
+data:
+  init.sql:
+    -- Ensure the 'users' table exists
+    CREATE TABLE IF NOT EXISTS "users" (
+    id UUID PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL
+    );
+    
+    INSERT INTO "users" (id, email, password, role)
+    SELECT
+    '223e4567-e89b-12d3-a456-426614174006'::uuid,
+    'testuser@test.com',
+    '$2b$12$7hoRZfJrRKD2nIm2vHLs7OBETy.LWenXXMLKf99W8M4PUwO6KB7fu',
+    'ADMIN'
+    WHERE NOT EXISTS (
+    SELECT 1
+    FROM "users"
+    WHERE id = '223e4567-e89b-12d3-a456-426614174006'::uuid
+    OR email = 'testuser@test.com'
+    );
+
+
+================================================
+FILE: manifest/infrastructure/kafka.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kafka
+  name: kafka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+    spec:
+      enableServiceLinks: false
+      containers:
+        - image: confluentinc/cp-kafka:7.5.0
+          name: kafka
+          ports:
+            - containerPort: 9092
+            - containerPort: 29092
+          env:
+            - name: KAFKA_BROKER_ID
+              value: "1"
+            - name: KAFKA_ZOOKEEPER_CONNECT
+              value: "zookeeper:2181"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "INTERNAL://kafka:9092,EXTERNAL://localhost:29092"
+            - name: KAFKA_LISTENERS
+              value: "INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:29092"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "INTERNAL"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_AUTO_CREATE_TOPICS_ENABLE
+              value: "true"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - cub kafka-ready -b localhost:9092 1 30
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - cub kafka-ready -b localhost:9092 1 30
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 30
+            failureThreshold: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kafka
+  name: kafka
+spec:
+  publishNotReadyAddresses: true
+  ports:
+    - name: internal
+      port: 9092
+      protocol: TCP
+      targetPort: 9092
+    - name: external
+      port: 29092
+      protocol: TCP
+      targetPort: 29092
+  selector:
+    app: kafka
+
+
+
+================================================
+FILE: manifest/infrastructure/patient-service-db.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: patient-service-db
+  name: patient-service-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service-db
+  template:
+    metadata:
+      labels:
+        app: patient-service-db
+    spec:
+      containers:
+        - image: postgres:17-alpine
+          name: postgres
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_DB
+                  name: patient-service-db-secret
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_USER
+                  name: patient-service-db-secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_PASSWORD
+                  name: patient-service-db-secret
+          volumeMounts:
+            - name: patient-service-db-storage
+              mountPath: /var/lib/postgresql/data
+            - name: patient-service-db-init-config
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U admin -d db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+      volumes:
+        - name: patient-service-db-storage
+          persistentVolumeClaim:
+            claimName: patient-service-db-pvc
+        - name: patient-service-db-init-config
+          configMap:
+            name: patient-service-db-init-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: patient-service-db
+  name: patient-service-db
+spec:
+  ports:
+    - port: 5432
+      protocol: TCP
+      targetPort: 5432
+  selector:
+    app: patient-service-db
+
+
+---
+apiVersion: v1
+data:
+  POSTGRES_DB: ZGI=
+  POSTGRES_PASSWORD: Y2hhbmdlbWVpbnByb2Qh
+  POSTGRES_USER: YWRtaW4=
+kind: Secret
+metadata:
+  name: patient-service-db-secret
+
+---
+# Persistent volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: patient-service-db-pv
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: /db_volumes/patient-service-db
+
+---
+# Persistent volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: patient-service-db-pvc
+spec:
+  storageClassName: "standard"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patient-service-db-init-config
+data:
+  init.sql:
+    -- Ensure the 'patient' table exists
+    CREATE TABLE IF NOT EXISTS patient
+    (
+        id
+        UUID
+        PRIMARY
+        KEY,
+        name
+        VARCHAR
+    (
+        255
+    ) NOT NULL,
+        email VARCHAR
+    (
+        255
+    ) UNIQUE NOT NULL,
+        address VARCHAR
+    (
+        255
+    ) NOT NULL,
+        date_of_birth DATE NOT NULL,
+        registered_date DATE NOT NULL
+        );
+
+    -- Insert well-known UUIDs for specific patients
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '123e4567-e89b-12d3-a456-426614174000',
+           'John Doe',
+           'john.doe@example.com',
+           '123 Main St, Springfield',
+           '1985-06-15',
+           '2024-01-10' WHERE NOT EXISTS (SELECT 1
+                      FROM patient
+                      WHERE id = '123e4567-e89b-12d3-a456-426614174000');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '123e4567-e89b-12d3-a456-426614174001',
+           'Jane Smith',
+           'jane.smith@example.com',
+           '456 Elm St, Shelbyville',
+           '1990-09-23',
+           '2023-12-01' WHERE NOT EXISTS (SELECT 1
+                      FROM patient
+                      WHERE id = '123e4567-e89b-12d3-a456-426614174001');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '123e4567-e89b-12d3-a456-426614174002',
+           'Alice Johnson',
+           'alice.johnson@example.com',
+           '789 Oak St, Capital City',
+           '1978-03-12',
+           '2022-06-20' WHERE NOT EXISTS (SELECT 1
+                      FROM patient
+                      WHERE id = '123e4567-e89b-12d3-a456-426614174002');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '123e4567-e89b-12d3-a456-426614174003',
+           'Bob Brown',
+           'bob.brown@example.com',
+           '321 Pine St, Springfield',
+           '1982-11-30',
+           '2023-05-14' WHERE NOT EXISTS (SELECT 1
+                      FROM patient
+                      WHERE id = '123e4567-e89b-12d3-a456-426614174003');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '123e4567-e89b-12d3-a456-426614174004',
+           'Emily Davis',
+           'emily.davis@example.com',
+           '654 Maple St, Shelbyville',
+           '1995-02-05',
+           '2024-03-01' WHERE NOT EXISTS (SELECT 1
+                      FROM patient
+                      WHERE id = '123e4567-e89b-12d3-a456-426614174004');
+
+    -- Insert well-known UUIDs for specific patients
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174005',
+           'Michael Green',
+           'michael.green@example.com',
+           '987 Cedar St, Springfield',
+           '1988-07-25',
+           '2024-02-15' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174005');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174006',
+           'Sarah Taylor',
+           'sarah.taylor@example.com',
+           '123 Birch St, Shelbyville',
+           '1992-04-18',
+           '2023-08-25' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174006');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174007',
+           'David Wilson',
+           'david.wilson@example.com',
+           '456 Ash St, Capital City',
+           '1975-01-11',
+           '2022-10-10' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174007');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174008',
+           'Laura White',
+           'laura.white@example.com',
+           '789 Palm St, Springfield',
+           '1989-09-02',
+           '2024-04-20' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174008');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174009',
+           'James Harris',
+           'james.harris@example.com',
+           '321 Cherry St, Shelbyville',
+           '1993-11-15',
+           '2023-06-30' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174009');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174010',
+           'Emma Moore',
+           'emma.moore@example.com',
+           '654 Spruce St, Capital City',
+           '1980-08-09',
+           '2023-01-22' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174010');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174011',
+           'Ethan Martinez',
+           'ethan.martinez@example.com',
+           '987 Redwood St, Springfield',
+           '1984-05-03',
+           '2024-05-12' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174011');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174012',
+           'Sophia Clark',
+           'sophia.clark@example.com',
+           '123 Hickory St, Shelbyville',
+           '1991-12-25',
+           '2022-11-11' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174012');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174013',
+           'Daniel Lewis',
+           'daniel.lewis@example.com',
+           '456 Cypress St, Capital City',
+           '1976-06-08',
+           '2023-09-19' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174013');
+
+    INSERT INTO patient (id, name, email, address, date_of_birth, registered_date)
+    SELECT '223e4567-e89b-12d3-a456-426614174014',
+           'Isabella Walker',
+           'isabella.walker@example.com',
+           '789 Willow St, Springfield',
+           '1987-10-17',
+           '2024-03-29' WHERE NOT EXISTS (SELECT 1 FROM patient WHERE id = '223e4567-e89b-12d3-a456-426614174014');
+
+
+
+================================================
+FILE: manifest/infrastructure/zookeeper.yaml
+================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: zookeeper
+  name: zookeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - image: confluentinc/cp-zookeeper:7.5.0
+          name: zookeeper
+          ports:
+            - containerPort: 2181
+          env:
+            - name: ZOOKEEPER_CLIENT_PORT
+              value: "2181"
+            - name: ZOOKEEPER_TICK_TIME
+              value: "2000"
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - echo srvr | nc localhost 2181 | grep -q Mode
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - echo srvr | nc localhost 2181 | grep -q Mode
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: zookeeper
+  name: zookeeper
+spec:
+  ports:
+    - port: 2181
+      protocol: TCP
+      targetPort: 2181
+  selector:
+    app: zookeeper
+
+

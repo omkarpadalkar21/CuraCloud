@@ -1,0 +1,27 @@
+# BUG FIX #4: Sidecar injection was never enabled.
+#
+# Istio works by injecting an Envoy proxy sidecar into every pod. That sidecar
+# intercepts all inbound and outbound traffic and applies mesh routing rules,
+# mTLS, and telemetry. Without it, pods communicate directly over plain TCP,
+# completely bypassing the service mesh. Cross-cluster traffic via the
+# east-west gateway is impossible because no sidecar exists to encode the
+# target service's SNI or to initiate mTLS.
+#
+# The label "istio-injection: enabled" tells the Istio mutating webhook to
+# automatically inject the sidecar container into every new pod in this
+# namespace.
+#
+# APPLY THIS BEFORE deploying any application manifests:
+#   kubectl apply --context=cluster-1 -f namespace.yaml
+#   kubectl apply --context=cluster-2 -f namespace.yaml
+#
+# After applying, restart existing deployments so pods get injected:
+#   kubectl rollout restart deployment -n default --context=cluster-1
+#   kubectl rollout restart deployment -n default --context=cluster-2
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    istio-injection: enabled
