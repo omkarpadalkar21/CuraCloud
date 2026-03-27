@@ -1,0 +1,45 @@
+# DestinationRules for cross-cluster traffic (cluster-1 → cluster-2)
+#
+# WHY THIS IS REQUIRED:
+#   In Istio multi-network multi-cluster, services on cluster-2 are
+#   represented in cluster-1 by ServiceEntries whose endpoints point
+#   to the East-West Gateway (EWG) IP:15443.
+#
+#   The EWG operates in AUTO_PASSTHROUGH mode: it reads the SNI header
+#   of each incoming TLS connection and forwards it unchanged to the
+#   target service's Envoy sidecar, which terminates the mTLS session.
+#
+#   For this to work, the OUTBOUND sidecar in cluster-1 MUST initiate
+#   mTLS (ISTIO_MUTUAL) to the EWG. Without a DestinationRule setting
+#   tls.mode: ISTIO_MUTUAL, Envoy sends plaintext to the EWG and the
+#   TLS handshake fails with:
+#     "CERTIFICATE_VERIFY_FAILED: self signed certificate in chain"
+#
+#   APPLY TO: cluster-1 only (that is where the clients live).
+#
+---
+# billing-service: patient-service → billing-service via gRPC (9001)
+# and optionally HTTP (4001). Both ports tunnel through EWG on 15443.
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  host: billing-service.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+# kafka: patient-service publishes events to kafka (cluster-2) via
+# TCP ports 9092 and 29092. Same EWG tunnel, same TLS requirement.
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  host: kafka.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL

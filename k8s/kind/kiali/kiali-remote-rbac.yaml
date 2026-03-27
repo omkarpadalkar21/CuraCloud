@@ -1,0 +1,98 @@
+# ClusterRole on the REMOTE cluster (cluster-2) that grants Kiali
+# the permissions it needs to read workloads, services, and Istio
+# config from the remote cluster for multi-cluster dashboard.
+#
+# The remote secret uses the istio-reader-service-account SA,
+# which by default only has read access to basic Istio resources.
+# Kiali needs more permissions to show deployments, pods, etc.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kiali-remote-reader
+  labels:
+    app: kiali
+rules:
+# Core resources Kiali needs to display workloads
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - endpoints
+  - namespaces
+  - pods
+  - pods/log
+  - replicationcontrollers
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+# Workload resources
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+# Batch resources
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+# Istio networking and security CRDs
+- apiGroups:
+  - networking.istio.io
+  - security.istio.io
+  - extensions.istio.io
+  - telemetry.istio.io
+  - gateway.networking.k8s.io
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+# Port forwarding needed by Kiali to proxy istiod
+- apiGroups: [""]
+  resources:
+  - pods/portforward
+  verbs:
+  - create
+  - post
+# Webhook configs needed for Kiali validation checks
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+# Secrets for reading configs
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kiali-remote-reader
+  labels:
+    app: kiali
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kiali-remote-reader
+subjects:
+- kind: ServiceAccount
+  name: istio-reader-service-account
+  namespace: istio-system

@@ -1,155 +1,540 @@
 Directory structure:
 └── k8s/
-    ├── istio/
-    │   ├── cluster-1-istio.yaml
-    │   ├── cluster-2-istio.yaml
-    │   └── mesh-networks-patch.sh
-    ├── kind/
-    │   ├── create-kind-cluster.sh
-    │   ├── kind-cluster-1-config.yaml
-    │   ├── kind-cluster-2-config.yaml
-    │   ├── kind-cluster1-config.yaml
-    │   ├── kind-cluster2-config.yaml
-    │   ├── kind-config.yaml
-    │   └── restart-clusters.sh
-    └── manifest/
-        ├── application/
-        │   ├── analytics-service.yaml
-        │   ├── api-gateway.yaml
-        │   ├── auth-service.yaml
-        │   ├── billing-service.yaml
-        │   └── patient-service.yaml
-        └── infrastructure/
-            ├── auth-service-db.yaml
-            ├── kafka.yaml
-            ├── patient-service-db.yaml
-            └── zookeeper.yaml
+    ├── ca1-cert.pem
+    ├── ca1-chain.pem
+    ├── ca1-csr.pem
+    ├── ca1-key.pem
+    ├── ca2-cert.pem
+    ├── ca2-chain.pem
+    ├── ca2-csr.pem
+    ├── ca2-key.pem
+    ├── root-cert.pem
+    ├── root-cert.srl
+    ├── root-key.pem
+    ├── setup-ca2.sh
+    └── kind/
+        ├── create-kind-cluster.sh
+        ├── kind-cluster-1-config.yaml
+        ├── kind-cluster-2-config.yaml
+        ├── kind-cluster1-config.yaml
+        ├── kind-cluster2-config.yaml
+        ├── kind-config.yaml
+        ├── restart-clusters.sh
+        ├── setup-mesh.sh
+        ├── istio/
+        │   ├── cluster-1-istio.yaml
+        │   ├── cluster-2-istio.yaml
+        │   ├── exchange-secrets.sh
+        │   ├── expose-services.yaml
+        │   └── mesh-networks-patch.sh
+        ├── kiali/
+        │   ├── kiali-multicluster.yaml
+        │   └── kiali-remote-rbac.yaml
+        └── manifest/
+            ├── namespace.yaml
+            ├── application/
+            │   ├── analytics-service.yaml
+            │   ├── api-gateway.yaml
+            │   ├── auth-service.yaml
+            │   ├── billing-service.yaml
+            │   └── patient-service.yaml
+            ├── infrastructure/
+            │   ├── auth-service-db.yaml
+            │   ├── kafka.yaml
+            │   ├── patient-service-db.yaml
+            │   └── zookeeper.yaml
+            └── istio/
+                └── destination-rules.yaml
 
 ================================================
-FILE: istio/cluster-1-istio.yaml
+FILE: ca1-cert.pem
 ================================================
-apiVersion: install.istio.io/v1alpha1
-kind: IstioOperator
-spec:
-  values:
-    global:
-      meshID: curacloud-mesh
-      multiCluster:
-        clusterName: curacloud-cluster-1
-      network: network1
-  meshConfig:
-    defaultConfig:
-      proxyMetadata:
-        ISTIO_META_DNS_CAPTURE: "true"
-        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
-
-
-
-================================================
-FILE: istio/cluster-2-istio.yaml
-================================================
-apiVersion: install.istio.io/v1alpha1
-kind: IstioOperator
-spec:
-  values:
-    global:
-      meshID: curacloud-mesh
-      multiCluster:
-        clusterName: curacloud-cluster-2
-      network: network2
-  meshConfig:
-    defaultConfig:
-      proxyMetadata:
-        ISTIO_META_DNS_CAPTURE: "true"
-        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+-----BEGIN CERTIFICATE-----
+MIIEyTCCArECFBegEIBLjlmKsdbWgv6tcp8R5bYKMA0GCSqGSIb3DQEBCwUAMCIx
+DjAMBgNVBAoMBU15T3JnMRAwDgYDVQQDDAdSb290IENBMB4XDTI2MDMyNjAzNTIx
+OVoXDTMxMDMyNTAzNTIxOVowIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMx
+IENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAs87v78Qzu0EedHGl
+LRabzuIFTimAYTnyqar5wDPDtaHzJWfcHK3+KzB5aMlkFF0f0ji/JtvIPybglZnU
+XSNke37rnv55gIWPtGttVkpsSS+5wF72FWa8p/Nm6rK5giRq4zLNmWnmd6z8XQ57
+1ccQ3qEr4tq1Fev1SfUuup1doQCxQ8i7cYZmnPRr/1YFOneQJGfxPuUmPAnqXu/h
+X21PF2bblbPLdHvQE7ZaVzvYlkQbygfFRAC/xZHu+SqrrO/9yztga5s1pnTPOPMh
+Ibbd9UwXyNrHk78OmlYhKMpTDCz/PPd074aEXH8Vn5Yktv59/A39gA9XCY9anjdT
+9EdObu5NL2CV+f6iKzqf+1P2SDaHsKhQo3xbGzEQby8EHrxARNDZaHSV863YJhqq
+hR7HBE3cvpYWahUnKPeWL8QpbQtrvSPzD59ZDVsJucvpviSsVbqwMT5NmjWLZlvW
+NUTy1zrXPb8iQ9c20+fMnyXwpLdyTqXfCFn9TUEGcsGsNfO6R2UWzzHFvanjiBsL
+SBYQDARgeb1kNj029d/Pmox7fBG9djV6S4wa6on/CPdp3yRTz/ctx++ClN43R4uT
++jPPf81lEk4zDGnIjo43O4a4G9vEzbfIZWHfy5ju5xo9h9Tbp2tF0miVN8vGZNlt
+tYHw2AlNNXebQi+AqThneeD7stUCAwEAATANBgkqhkiG9w0BAQsFAAOCAgEAMIOT
+zkLyHZMLq1v2OYxFQ/9eTv3qv54olf6KAI771UAWruLf2yTGY19edIyP4R3SunZS
+OYjeM4VgYHOSEINaDVLdzsfxuhleLU9FzEwdZ1GH5MkCpRoSl9jjimoPIcn+28SD
+IYXbR1y0lkipKyocogocx1vxpHObWKNY8AVLSlJYBVrpg4LXAGy/VsACK3eFeDKc
++vKZdW7qMiuHm2Bw1ub45eiU0sRTf6PVHGwhbuiHIdOeZIRGkHSUfVFz/qV7ty/5
+4ipNgG1XpAmaL5DXaoB9ZtY+UVTbcKX9AYxJXswl1TLZvpfmw+qSnKirPgHoMHRu
+eiGeZayQi54zqQLMryvp9JkVFknP+v2vljjDfBukUxwJQJ4CcKgMOWv/AdVfsN3/
+F16uOj8fNDM/0TpNQadOus49IL7Xw3TVi3Dt32Jnn0D2a0g+6dg6qK8Ahmb5D2Jb
+CnZjX9N4DeXCTFf921ea23ZVjCTA5Cc+NVEjLzgP1qcxfljhA8cigvwSz2VZ6+B2
+tAsKSR95gfCH5AfGVJnDV5aE4rxwO3hVlunktWnKRih7cJNviKIdNkUcDwDvUq58
+zEgDQCouEJoN3So8Sm0FYVwAt9wgctO/IiX6NA8B3HyeFUMJertgMonbnftZO3/L
+XdEZSC6Lvetz1SQEYxULfY3hoBxvDGJR8nwsDh0=
+-----END CERTIFICATE-----
 
 
 
 ================================================
-FILE: istio/mesh-networks-patch.sh
+FILE: ca1-chain.pem
 ================================================
-#!/usr/bin/env bash
-# Fix cross-cluster communication:
-# 1. Patch meshNetworks so istiod knows to route via East-West Gateways
-# 2. Add ServiceEntry for kafka on cluster-1
-# 3. Restart istiod
+-----BEGIN CERTIFICATE-----
+MIIEyTCCArECFBegEIBLjlmKsdbWgv6tcp8R5bYKMA0GCSqGSIb3DQEBCwUAMCIx
+DjAMBgNVBAoMBU15T3JnMRAwDgYDVQQDDAdSb290IENBMB4XDTI2MDMyNjAzNTIx
+OVoXDTMxMDMyNTAzNTIxOVowIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMx
+IENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAs87v78Qzu0EedHGl
+LRabzuIFTimAYTnyqar5wDPDtaHzJWfcHK3+KzB5aMlkFF0f0ji/JtvIPybglZnU
+XSNke37rnv55gIWPtGttVkpsSS+5wF72FWa8p/Nm6rK5giRq4zLNmWnmd6z8XQ57
+1ccQ3qEr4tq1Fev1SfUuup1doQCxQ8i7cYZmnPRr/1YFOneQJGfxPuUmPAnqXu/h
+X21PF2bblbPLdHvQE7ZaVzvYlkQbygfFRAC/xZHu+SqrrO/9yztga5s1pnTPOPMh
+Ibbd9UwXyNrHk78OmlYhKMpTDCz/PPd074aEXH8Vn5Yktv59/A39gA9XCY9anjdT
+9EdObu5NL2CV+f6iKzqf+1P2SDaHsKhQo3xbGzEQby8EHrxARNDZaHSV863YJhqq
+hR7HBE3cvpYWahUnKPeWL8QpbQtrvSPzD59ZDVsJucvpviSsVbqwMT5NmjWLZlvW
+NUTy1zrXPb8iQ9c20+fMnyXwpLdyTqXfCFn9TUEGcsGsNfO6R2UWzzHFvanjiBsL
+SBYQDARgeb1kNj029d/Pmox7fBG9djV6S4wa6on/CPdp3yRTz/ctx++ClN43R4uT
++jPPf81lEk4zDGnIjo43O4a4G9vEzbfIZWHfy5ju5xo9h9Tbp2tF0miVN8vGZNlt
+tYHw2AlNNXebQi+AqThneeD7stUCAwEAATANBgkqhkiG9w0BAQsFAAOCAgEAMIOT
+zkLyHZMLq1v2OYxFQ/9eTv3qv54olf6KAI771UAWruLf2yTGY19edIyP4R3SunZS
+OYjeM4VgYHOSEINaDVLdzsfxuhleLU9FzEwdZ1GH5MkCpRoSl9jjimoPIcn+28SD
+IYXbR1y0lkipKyocogocx1vxpHObWKNY8AVLSlJYBVrpg4LXAGy/VsACK3eFeDKc
++vKZdW7qMiuHm2Bw1ub45eiU0sRTf6PVHGwhbuiHIdOeZIRGkHSUfVFz/qV7ty/5
+4ipNgG1XpAmaL5DXaoB9ZtY+UVTbcKX9AYxJXswl1TLZvpfmw+qSnKirPgHoMHRu
+eiGeZayQi54zqQLMryvp9JkVFknP+v2vljjDfBukUxwJQJ4CcKgMOWv/AdVfsN3/
+F16uOj8fNDM/0TpNQadOus49IL7Xw3TVi3Dt32Jnn0D2a0g+6dg6qK8Ahmb5D2Jb
+CnZjX9N4DeXCTFf921ea23ZVjCTA5Cc+NVEjLzgP1qcxfljhA8cigvwSz2VZ6+B2
+tAsKSR95gfCH5AfGVJnDV5aE4rxwO3hVlunktWnKRih7cJNviKIdNkUcDwDvUq58
+zEgDQCouEJoN3So8Sm0FYVwAt9wgctO/IiX6NA8B3HyeFUMJertgMonbnftZO3/L
+XdEZSC6Lvetz1SQEYxULfY3hoBxvDGJR8nwsDh0=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFJTCCAw2gAwIBAgIUHiOig1MafoQJYo5RseQFBbc2xmwwDQYJKoZIhvcNAQEL
+BQAwIjEOMAwGA1UECgwFTXlPcmcxEDAOBgNVBAMMB1Jvb3QgQ0EwHhcNMjYwMzI2
+MDM1MjE2WhcNMzYwMzIzMDM1MjE2WjAiMQ4wDAYDVQQKDAVNeU9yZzEQMA4GA1UE
+AwwHUm9vdCBDQTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAMSNzdxW
+ccTQTKFEYUp/SfJkGBjaIDvsE08EarjWRs8P33PkklieV3JsgqMgzNZ0dC76UrGg
+LzjXedhMgJbdUhNe0EpNkCYpqr9N6aY5ky49mdWDwbOTQ/MYkhzWkkREy/cHVCvm
+P5b2K3uxBJFLXizE0Bt2I5jG1dMmOZykOJV5P9TGJEGxHSK2Xw0bXeQXod2MFr8/
+oSFiCz2KEY85t7X6/tMb+iXwzske9oQ5CwHZSpOBfYRruLTJGXHLmkgi9y3HFrtc
+wedId8Jo4QnLXUaAmuMoCnD45ggAzlPQDrylLbWdAjb2VLIHCxpvlJ4YjXKTBeMS
+GStR7O5Ft4GqPjLm/EPpYQ5M3+McdgbKgPJfYPvz3zQXThkgfoEeLQW4ZRhS3vML
+Sl/YvzgxUzCdkhO3QlVM2J6evfddymdIljSKkQxVM4dDFcyGwB4dd+MSmrRzpixm
+HHbZ/zldW8hHQn38H9QyQTjJxu4WQYHPpS38XvBRWUJJM/LQvxJZwOnKLzSpfd40
+U9c58J81ZEjPM9cg5Vnvh3Fcl8+ZF4jm0eeQTs4DwrEunOWLZbrJLL1njX29ZA+s
+P3C+7kb5lP8A5lU5CWeE2SJ9Ay4WYS3bMZrfXKzuNJI0OrSBd7Rqoy3FFmDD00DG
+BMr/d5mkmEfQspRMhhNkWCCsL71Nsk6Arj3nAgMBAAGjUzBRMB0GA1UdDgQWBBQd
+CyWecCbI7gOuIOaR6Sr71Yv0ITAfBgNVHSMEGDAWgBQdCyWecCbI7gOuIOaR6Sr7
+1Yv0ITAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQBdGJVIFko6
+HJVymA+T7Hr/wRnSkFNq+2LI82VeozIc8NAovBBDegcZYgp+iOPIK063IO/pPJh3
+JTxUgxGH9we4o6KctS/MSO37MMgXCkVAJLltzXiAZqgFtnSnnImZg2mjlg2KwAZK
+sSlt86ASGrHqjvdGBbMhG7GL4fns/mRgTjNVvu+MR+UewlIcGtqYvFq7OI+BDUdw
+HWJZ03oiGKftc02Ysc3JhQ+FzWOznfGdzOSadnEuFW2jWPwIlxtTTuXW30+Gsjh+
+Uv5eTiugAhpYVUu++eEDOXWGeEx4sKZxooetWhsTSgsgf+EWqKTMi0eD2oe5I3gM
+XzxTlPs3herS7JvAzY6J0qHq1KfEE4fruxDe0CRLTlk9iSCY4DU7+epB5Ufn65P5
+7lnPlV5S/tmftkEt7rIxjdxc4zJeXF4yPjaWrLLGUZTqpia+YpvwyAZ+WfeoXX5D
+OsxDKVHOEjJNiIzsL8bV32B14A05RWeeKxQVD0qUTNBs0980IXYskjl6rf/68PNf
+j1H2liYoJxIEa1keAsBgWGBNOdjcMb5W4sYQFRGnfHVXRDiskovB+6C3kxR4JgFq
+QCsD8iU5RUQkF1ijgQuVw6K+Qh/E8FJ+2DH4rBs7JsH9o9fJHxE7nPR7v8VJh6T4
+bFKug1xHVxGfwkhsSqSpQaj7vTtj/c7KdA==
+-----END CERTIFICATE-----
 
-set -e
 
-C1_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-1 \
-  -o jsonpath='{.spec.externalIPs[0]}')
-C2_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-2 \
-  -o jsonpath='{.spec.externalIPs[0]}')
 
-echo "[INFO] cluster-1 EWG IP: $C1_EWG"
-echo "[INFO] cluster-2 EWG IP: $C2_EWG"
+================================================
+FILE: ca1-csr.pem
+================================================
+-----BEGIN CERTIFICATE REQUEST-----
+MIIEZTCCAk0CAQAwIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMxIENBMIIC
+IjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAs87v78Qzu0EedHGlLRabzuIF
+TimAYTnyqar5wDPDtaHzJWfcHK3+KzB5aMlkFF0f0ji/JtvIPybglZnUXSNke37r
+nv55gIWPtGttVkpsSS+5wF72FWa8p/Nm6rK5giRq4zLNmWnmd6z8XQ571ccQ3qEr
+4tq1Fev1SfUuup1doQCxQ8i7cYZmnPRr/1YFOneQJGfxPuUmPAnqXu/hX21PF2bb
+lbPLdHvQE7ZaVzvYlkQbygfFRAC/xZHu+SqrrO/9yztga5s1pnTPOPMhIbbd9UwX
+yNrHk78OmlYhKMpTDCz/PPd074aEXH8Vn5Yktv59/A39gA9XCY9anjdT9EdObu5N
+L2CV+f6iKzqf+1P2SDaHsKhQo3xbGzEQby8EHrxARNDZaHSV863YJhqqhR7HBE3c
+vpYWahUnKPeWL8QpbQtrvSPzD59ZDVsJucvpviSsVbqwMT5NmjWLZlvWNUTy1zrX
+Pb8iQ9c20+fMnyXwpLdyTqXfCFn9TUEGcsGsNfO6R2UWzzHFvanjiBsLSBYQDARg
+eb1kNj029d/Pmox7fBG9djV6S4wa6on/CPdp3yRTz/ctx++ClN43R4uT+jPPf81l
+Ek4zDGnIjo43O4a4G9vEzbfIZWHfy5ju5xo9h9Tbp2tF0miVN8vGZNlttYHw2AlN
+NXebQi+AqThneeD7stUCAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4ICAQBAW32BDzCj
+s46329SJBdGMB49IyyZhKgxC65Gl/xa9JDfzy82jCOVeMpTGc7E4MGoIhPF+l25s
+vsERI6aca3U2L9ajQOQ1omnwY0uTvmHt3JExTEIzXOBlww+p40sfM9zVgT+P7z9i
+idgvGBmt7NIIjJfoc0GzZ4VNvqqUp1BCzJFXA5E2/nWef6b3pVu3Gucv4XCMvW6x
+nPTGku1U+sHagZap2RinJWvPOMDOpw7dQlqhYY+gPFrzQVasP5q0iJmGBHOCtwTt
+/maSqINc5NdPARtu0aUD108pP6C1VsDl3jz/9sJ9+eTew+heSy67R0AYQLA0TFrR
+GK6bo9JfGK8oK+1QW2VNFZxBScXaxHeNr+j9Adl8cs3MWq457lPHqg8sHonOwBjr
+m7hZT0uPvJkBa2PgLJ13oPg1i2vK3VagFXStXAcyZycKYLXutTudTk65UFOa094P
+2lhDYenguQZ/UuKW9DYRN+h5AnuJWT9TEEeG0dSpbVwlKbVg8akRWZ1FOoXOiMui
+zJmQdzTh/GxmbjuGO/L3IU3lHuMpswCuhaB1OJG1yOpB0Hk8wyp2AH1zCiDQReRH
+b0lQuJ/v19VYOOT9hRcDPxr8+ZuDxtwGJNjebQ3hZPuaKLmw4EVZjEDDDKpIRw6d
+i8SL7hxwf+amdBePQuDNJD9IN/0CNNfN8Q==
+-----END CERTIFICATE REQUEST-----
 
-# ── 1. Patch meshNetworks on cluster-1 ────────────────────────────────────────
-# cluster-1 knows its own network1 via its EWG, and network2 via cluster-2's EWG
-kubectl patch configmap istio -n istio-system --context=cluster-1 \
-  --type merge -p "{
-    \"data\": {
-      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
-    }
-  }"
-echo "[OK] meshNetworks patched on cluster-1"
 
-# ── 2. Patch meshNetworks on cluster-2 ────────────────────────────────────────
-kubectl patch configmap istio -n istio-system --context=cluster-2 \
-  --type merge -p "{
-    \"data\": {
-      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
-    }
-  }"
-echo "[OK] meshNetworks patched on cluster-2"
 
-# ── 3. ServiceEntry for kafka on cluster-1 ────────────────────────────────────
-# Without this, cluster-1 pods can't resolve "kafka" (it only exists in cluster-2)
-kubectl apply --context=cluster-1 -f - <<EOF
-apiVersion: networking.istio.io/v1alpha3
-kind: ServiceEntry
-metadata:
-  name: kafka-cluster2
-  namespace: default
-spec:
-  hosts:
-  - kafka.default.svc.cluster.local
-  location: MESH_INTERNAL
-  ports:
-  - number: 9092
-    name: tcp-kafka
-    protocol: TCP
-  - number: 29092
-    name: tcp-kafka-internal
-    protocol: TCP
-  resolution: DNS
-  endpoints:
-  - address: ${C2_EWG}
-    ports:
-      tcp-kafka: 15443
-      tcp-kafka-internal: 15443
-    labels:
-      security.istio.io/tlsMode: istio
-EOF
-echo "[OK] ServiceEntry 'kafka-cluster2' created on cluster-1"
+================================================
+FILE: ca1-key.pem
+================================================
+-----BEGIN PRIVATE KEY-----
+MIIJRAIBADANBgkqhkiG9w0BAQEFAASCCS4wggkqAgEAAoICAQCzzu/vxDO7QR50
+caUtFpvO4gVOKYBhOfKpqvnAM8O1ofMlZ9wcrf4rMHloyWQUXR/SOL8m28g/JuCV
+mdRdI2R7fuue/nmAhY+0a21WSmxJL7nAXvYVZryn82bqsrmCJGrjMs2ZaeZ3rPxd
+DnvVxxDeoSvi2rUV6/VJ9S66nV2hALFDyLtxhmac9Gv/VgU6d5AkZ/E+5SY8Cepe
+7+FfbU8XZtuVs8t0e9ATtlpXO9iWRBvKB8VEAL/Fke75Kqus7/3LO2BrmzWmdM84
+8yEhtt31TBfI2seTvw6aViEoylMMLP8893TvhoRcfxWfliS2/n38Df2AD1cJj1qe
+N1P0R05u7k0vYJX5/qIrOp/7U/ZINoewqFCjfFsbMRBvLwQevEBE0NlodJXzrdgm
+GqqFHscETdy+lhZqFSco95YvxCltC2u9I/MPn1kNWwm5y+m+JKxVurAxPk2aNYtm
+W9Y1RPLXOtc9vyJD1zbT58yfJfCkt3JOpd8IWf1NQQZywaw187pHZRbPMcW9qeOI
+GwtIFhAMBGB5vWQ2PTb138+ajHt8Eb12NXpLjBrqif8I92nfJFPP9y3H74KU3jdH
+i5P6M89/zWUSTjMMaciOjjc7hrgb28TNt8hlYd/LmO7nGj2H1Nuna0XSaJU3y8Zk
+2W21gfDYCU01d5tCL4CpOGd54Puy1QIDAQABAoICAAgx6FvA5ouvBYSQm72GQC5/
+EiH/FbpjV0+LeuuwivJXsdAqCjfmEoVk5ZpUmBgD1jFbrpNGj+XtmhhEunn5Ojk/
+rlz2I6hWI1fOz/JPcjJ+t0RQ1P3iNhB12+JaqBufQx4yQKPF62qtFWkSAdZbMYYN
+X0WXqrUCUVEK2JOe8aIReO103rLR9DzMjgcv5Dfx3uhYiBVSASVaMqvw2mXMl/7M
+zGQSXaA5jAujSL2c57uSL0MMtMgAkbz0halRBsyFuUcz4FU0gyQ1mC6JXuCdZ+3S
+sesl/35uG4FbZ2encFQH0U/gcQcBVj3XTpoR+tU6nELVNLvLVy/uGuxG62+2IplW
+OEeYjHaZcikYkD8aT2qZsvaei5pHzhAyJpbW0hdFCibXixvoetBJBkRRqWQX3P/4
+5SVD8DN0V/tjLRgQq5de3SYekWshKD0usp6f71DqUx8vJRMvt0jr1jh77TBxpz2O
+NW+CXpYrmK2CviOs75240xarly78OEvvmJcLjaIunMJKCaG1jO9Nh8jvNVBUnr5n
+cvMxzkk4Vz9frbfwOh/lvQ5lGZIKE8t7UubqwQhCC1eAeOIZ+M0Z0gJpdm3XXWxR
+SxJgzmlSJMZq4es9/BZajyB3ACfzl0XWcCQiOCqxHYC/CzZVuviKASkuasRTAR6K
+G5b3hzV8Ffg1d7NgvodRAoIBAQDsfeMCsftNrKWg+gxZpIfw9N9/9hPenIl+HB/E
+7SEeg9ifYRr5a+dl5ov/SDzw4miDJVYZLcVOb57Qn5o1VPi1fh3y/JxoJq04hd/0
+X3TQAWXoQp6QAF2/aSyXxC/E+cjSKwxNlz+o+bZET35lWwTtSFFGIGqInUvKmorn
+uqDAarECPsdmQMdFY31H84Lv1XJG2aFLSH88Bw4JVT8bp8HIEDR0HGXc3P+NbDDM
+fqX+4nFBNfdTKjEAdjYo9agxjsfw+MA0ezlKSY3c2tVdBijcg9Dtg1cpLil0EEtF
+DDetUswYNU9gkR36UGhRcTTELsGldVGwQwpI/4dWthcqrp9FAoIBAQDCpAoF0kxH
+OzoLYXfExa12pHsqAYpf4mivIyoPnEsQEaPSZXkBbUbassyaCoDPVCJ/KaRY3y6l
+hnIE7MAEdrru/9uCrmHL2k3FNhRusJMczDu21jFmWI1SpVvM6XUYzv3tzEdmuLAL
+HKF4WdhUmNps881G5u2TnPkUYnc9yMfEmpF0NqbAdT2amGLYq83s+jJcbQrgcYxe
+Z03UFaQszlFFyckwEVAn44q2i+yhkgXD8xkW+EIvYITWuVAcZvhpm3Hpoap0GZdh
+ZYreJIO2JeHFjZ8xtTbs6q118XN0i+CeQDXc5j100tT2OCAtvb6etV0Dv1ex0SoO
+DEJ9zUg/Y/ZRAoIBAQCmCfihgs6bCXU8YXLcWV0sevCUifQHXsZV6W8QtyCCqTUl
+KWtj5TOQ4t41/MT0pzGTqloZ0X3vBQVvGi+N9DuuSX7DhEJYCZei0LOdgoukIucm
+u+dR2T/4zOIHKDIVzP4HOTwpGeETRUeIDHwEs3PxGM4fO1Ew26dD919BNVH55q6i
+keszypVeDWz/YGP0+VqDjfblwV+7iIR9XwGw7AZs7Zu2Td3ixLMT2vskCGOJYfj8
+POSJ2lyPI3ABMADH0qRkdnGUJ1Pg6WWVw3r8FgAIWvAMYiOHAScPmwUN1Hce1LwA
+3yT8+sYeYefsDlxqxR0miwkwhNEq0WV3Jt97EyE1AoIBAQCbOgusPN0MadWOwfqs
+eSIv3llDVNswQPZPxnGC5ZiPhiHqZ3arhqTdQX8e0oWL04N3epRRNByVcbV46/7v
+EGlgtbgwbjYcR0uCnfCJnlSUwORWmlfnUXPTl4Cw2PbEBEBK54GCEISFOB4mRzDZ
+ttVr0rvBceXCtYuHkEechIWc69BYqEUwc8/ffOxH9CxUc+y5/VSRTr0thKFzJJc8
+DIaQa68BoK0WQsebcdgTusrSTQuTYAYYlpcaT8vt+sjeIFQmiQHReZ9a04p+Qwyv
+tWJrFNkC4YyeQUJ5L0huiCdozbinJQ+aHZItkvFGyW4+UFGP7YdYjoFFls1oWtDl
+jSkhAoIBAQCn19m0sYC77M9Y+X6bi98ufFXaNdNyxGMNkOhYCHEVMbDotE3/oBTJ
+/QcwnsO9F7hxMc9ni3zBa5AnZSgDt4Ke5qxWVsZ0xMETvs322uwqyr17An4306Br
+UulRtnqy6anAdrvKUeHQ2XcD68HKjZN1O9zDw1ffdK4bmoOGEvRADBGFxTo/bZjl
+tLjjHZUiptjclHsILrqzQswDxX7e044bBNiqDA8V6KRJWq24YoHIC598g5yHgbQg
+NUHcGVHxmy8SBdGzedl3ICYI9qADRdQ7d9bfV0r5N6vbMof2MI1svkXojB7BvhRg
+rUXO0Jb4YEI6RCLfKg0ROoAQ3VY78mva
+-----END PRIVATE KEY-----
 
-# ── 4. Restart istiod on both clusters ────────────────────────────────────────
-echo "[INFO] Restarting istiod on both clusters to pick up meshNetworks..."
-kubectl rollout restart deployment/istiod -n istio-system --context=cluster-1
-kubectl rollout restart deployment/istiod -n istio-system --context=cluster-2
 
-echo "[INFO] Waiting for istiod on cluster-1..."
-kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --timeout=120s
-echo "[INFO] Waiting for istiod on cluster-2..."
-kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=120s
 
-echo ""
-echo "[OK] Done! Verifying remote cluster sync..."
-sleep 10
-echo "  cluster-1 view:"
-istioctl remote-clusters --context=cluster-1
-echo "  cluster-2 view:"
-istioctl remote-clusters --context=cluster-2
+================================================
+FILE: ca2-cert.pem
+================================================
+-----BEGIN CERTIFICATE-----
+MIIEyTCCArECFBegEIBLjlmKsdbWgv6tcp8R5bYPMA0GCSqGSIb3DQEBCwUAMCIx
+DjAMBgNVBAoMBU15T3JnMRAwDgYDVQQDDAdSb290IENBMB4XDTI2MDMyNjAzNTc0
+OFoXDTMxMDMyNTAzNTc0OFowIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMy
+IENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxY+3HtG65XeAfUv7
+HstNZSZonAqzxFPas8XKyb/9uyYeps7EQ19kmFVBSUqXOWYAlIkeggx/iSyQ1xdA
+gWOUgvvs4N2JJpSwGZj5vfXnnvSkb32rhXQzSO7udJuk+pdhQ7ei9IpjaVbhoJQp
+c49S5M3MeyBtZ8xwPJYnDXFCcoBkwD4knP39ywB/O0OzKvzBqEvqdyCNnJTwllBc
+jo2mrEd0nVLL2HfplgUEaTeT1yBRedIh3ppfR3S5s7QBJOMKXFJhUBavtDd4ZBRW
+dtb2MiH7X6+1iu5/3l2N7OVDVNfpFznIQGfeyZ14HOjDsJlcEZBHE0lhE+xXoBk3
+R3p5sm82+MF9qtTSVBJo4GWtR9gLIrAMqBNYewhjlzYf55z6WyR3GbayrX4UkQbH
+mWUA82IHKeWSxlaX5Y2BRozCQZlRV9bQSNmnuheIp5fBLWIzhKxRJ6Tp2twwUpLl
+sz4ioZLftANVEc3rzF75oLdg9jjO8P9HgEMk+9zsiLAG3SuWXi76Gwnr2q1thVig
+5TMHW7GW3MFN2KbZP35o2Iz8kY0nYytBsj+ddEBQK2G2zV+IZ4iTln6gdsUlTNEb
+LQ7kPfIbYDW5Xgg4aM8Ddx+bK2e9WISPxNxs68bTTslhqyrQKS+8zgSZb/df9H7t
+kfjCquv2QFDzQ22a5isvfBmjzS8CAwEAATANBgkqhkiG9w0BAQsFAAOCAgEAgDsU
+tssHJU1gYGFvdrB2UQuLqBW2pQVhg/ozY3dZYgKIJdM2nw0vSvhsUGkrSllq4oGE
+2Ump/2wrkaZw3KnNWwhvGKz4Pdo4XNuegs0C3VCoM03IRQGWBZLHD3+VZfKgYLZX
+yBLe0PSUYJu665MXVT35G0AWMn8zyRrX4KYlk1s8IWa0rLfSstg/WK5zoYIB4ucN
+xC9dEGX7Nhw5+y5MgyPmOEUdC6FkSZHoaw5CVJvWU+3nLHL13940EdDsxKItrytU
+iI1YKhRUsFhfZ+hLIX8KjsU1OoNjGPZNilX5RxtU9eHe/vsv6iw0WaFQEsSFqdqC
+EwoxuCWC9Gsymwjs97nDTdHxMAloLK9rxGESW0ETHSlYcoDndh8nuNBcWeyNGNf3
+HVqWxjIVmzwJU05Oo/1MOI8wWsvVJ0lTnljVY95/vstHtzEf2+ieNoNJ1O18RTj8
+k1UNFCfNOah8n0iPHuNaqPSYeBza7ZxGkM/6vusTJrtOQhYWoQ1bF+juqD/smBmh
+2Zeo9zw0LMdAmDt0G59LcMEXRO5Bz8Hfxq2J3fcpU8RD+dn0CAjIie3e/o4hjnuH
+NS122hMA2vLRGpc89YUf+hQr2ORL1/b5sPnFuqmWsi3UjmLAsf7co55p2eKTV5/n
+8j0IuPEbW1pVZYxsX1BTYLyiyCxB557WVSvruzU=
+-----END CERTIFICATE-----
+
+
+
+================================================
+FILE: ca2-chain.pem
+================================================
+-----BEGIN CERTIFICATE-----
+MIIEyTCCArECFBegEIBLjlmKsdbWgv6tcp8R5bYPMA0GCSqGSIb3DQEBCwUAMCIx
+DjAMBgNVBAoMBU15T3JnMRAwDgYDVQQDDAdSb290IENBMB4XDTI2MDMyNjAzNTc0
+OFoXDTMxMDMyNTAzNTc0OFowIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMy
+IENBMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxY+3HtG65XeAfUv7
+HstNZSZonAqzxFPas8XKyb/9uyYeps7EQ19kmFVBSUqXOWYAlIkeggx/iSyQ1xdA
+gWOUgvvs4N2JJpSwGZj5vfXnnvSkb32rhXQzSO7udJuk+pdhQ7ei9IpjaVbhoJQp
+c49S5M3MeyBtZ8xwPJYnDXFCcoBkwD4knP39ywB/O0OzKvzBqEvqdyCNnJTwllBc
+jo2mrEd0nVLL2HfplgUEaTeT1yBRedIh3ppfR3S5s7QBJOMKXFJhUBavtDd4ZBRW
+dtb2MiH7X6+1iu5/3l2N7OVDVNfpFznIQGfeyZ14HOjDsJlcEZBHE0lhE+xXoBk3
+R3p5sm82+MF9qtTSVBJo4GWtR9gLIrAMqBNYewhjlzYf55z6WyR3GbayrX4UkQbH
+mWUA82IHKeWSxlaX5Y2BRozCQZlRV9bQSNmnuheIp5fBLWIzhKxRJ6Tp2twwUpLl
+sz4ioZLftANVEc3rzF75oLdg9jjO8P9HgEMk+9zsiLAG3SuWXi76Gwnr2q1thVig
+5TMHW7GW3MFN2KbZP35o2Iz8kY0nYytBsj+ddEBQK2G2zV+IZ4iTln6gdsUlTNEb
+LQ7kPfIbYDW5Xgg4aM8Ddx+bK2e9WISPxNxs68bTTslhqyrQKS+8zgSZb/df9H7t
+kfjCquv2QFDzQ22a5isvfBmjzS8CAwEAATANBgkqhkiG9w0BAQsFAAOCAgEAgDsU
+tssHJU1gYGFvdrB2UQuLqBW2pQVhg/ozY3dZYgKIJdM2nw0vSvhsUGkrSllq4oGE
+2Ump/2wrkaZw3KnNWwhvGKz4Pdo4XNuegs0C3VCoM03IRQGWBZLHD3+VZfKgYLZX
+yBLe0PSUYJu665MXVT35G0AWMn8zyRrX4KYlk1s8IWa0rLfSstg/WK5zoYIB4ucN
+xC9dEGX7Nhw5+y5MgyPmOEUdC6FkSZHoaw5CVJvWU+3nLHL13940EdDsxKItrytU
+iI1YKhRUsFhfZ+hLIX8KjsU1OoNjGPZNilX5RxtU9eHe/vsv6iw0WaFQEsSFqdqC
+EwoxuCWC9Gsymwjs97nDTdHxMAloLK9rxGESW0ETHSlYcoDndh8nuNBcWeyNGNf3
+HVqWxjIVmzwJU05Oo/1MOI8wWsvVJ0lTnljVY95/vstHtzEf2+ieNoNJ1O18RTj8
+k1UNFCfNOah8n0iPHuNaqPSYeBza7ZxGkM/6vusTJrtOQhYWoQ1bF+juqD/smBmh
+2Zeo9zw0LMdAmDt0G59LcMEXRO5Bz8Hfxq2J3fcpU8RD+dn0CAjIie3e/o4hjnuH
+NS122hMA2vLRGpc89YUf+hQr2ORL1/b5sPnFuqmWsi3UjmLAsf7co55p2eKTV5/n
+8j0IuPEbW1pVZYxsX1BTYLyiyCxB557WVSvruzU=
+-----END CERTIFICATE-----
+-----BEGIN CERTIFICATE-----
+MIIFJTCCAw2gAwIBAgIUHiOig1MafoQJYo5RseQFBbc2xmwwDQYJKoZIhvcNAQEL
+BQAwIjEOMAwGA1UECgwFTXlPcmcxEDAOBgNVBAMMB1Jvb3QgQ0EwHhcNMjYwMzI2
+MDM1MjE2WhcNMzYwMzIzMDM1MjE2WjAiMQ4wDAYDVQQKDAVNeU9yZzEQMA4GA1UE
+AwwHUm9vdCBDQTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAMSNzdxW
+ccTQTKFEYUp/SfJkGBjaIDvsE08EarjWRs8P33PkklieV3JsgqMgzNZ0dC76UrGg
+LzjXedhMgJbdUhNe0EpNkCYpqr9N6aY5ky49mdWDwbOTQ/MYkhzWkkREy/cHVCvm
+P5b2K3uxBJFLXizE0Bt2I5jG1dMmOZykOJV5P9TGJEGxHSK2Xw0bXeQXod2MFr8/
+oSFiCz2KEY85t7X6/tMb+iXwzske9oQ5CwHZSpOBfYRruLTJGXHLmkgi9y3HFrtc
+wedId8Jo4QnLXUaAmuMoCnD45ggAzlPQDrylLbWdAjb2VLIHCxpvlJ4YjXKTBeMS
+GStR7O5Ft4GqPjLm/EPpYQ5M3+McdgbKgPJfYPvz3zQXThkgfoEeLQW4ZRhS3vML
+Sl/YvzgxUzCdkhO3QlVM2J6evfddymdIljSKkQxVM4dDFcyGwB4dd+MSmrRzpixm
+HHbZ/zldW8hHQn38H9QyQTjJxu4WQYHPpS38XvBRWUJJM/LQvxJZwOnKLzSpfd40
+U9c58J81ZEjPM9cg5Vnvh3Fcl8+ZF4jm0eeQTs4DwrEunOWLZbrJLL1njX29ZA+s
+P3C+7kb5lP8A5lU5CWeE2SJ9Ay4WYS3bMZrfXKzuNJI0OrSBd7Rqoy3FFmDD00DG
+BMr/d5mkmEfQspRMhhNkWCCsL71Nsk6Arj3nAgMBAAGjUzBRMB0GA1UdDgQWBBQd
+CyWecCbI7gOuIOaR6Sr71Yv0ITAfBgNVHSMEGDAWgBQdCyWecCbI7gOuIOaR6Sr7
+1Yv0ITAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQBdGJVIFko6
+HJVymA+T7Hr/wRnSkFNq+2LI82VeozIc8NAovBBDegcZYgp+iOPIK063IO/pPJh3
+JTxUgxGH9we4o6KctS/MSO37MMgXCkVAJLltzXiAZqgFtnSnnImZg2mjlg2KwAZK
+sSlt86ASGrHqjvdGBbMhG7GL4fns/mRgTjNVvu+MR+UewlIcGtqYvFq7OI+BDUdw
+HWJZ03oiGKftc02Ysc3JhQ+FzWOznfGdzOSadnEuFW2jWPwIlxtTTuXW30+Gsjh+
+Uv5eTiugAhpYVUu++eEDOXWGeEx4sKZxooetWhsTSgsgf+EWqKTMi0eD2oe5I3gM
+XzxTlPs3herS7JvAzY6J0qHq1KfEE4fruxDe0CRLTlk9iSCY4DU7+epB5Ufn65P5
+7lnPlV5S/tmftkEt7rIxjdxc4zJeXF4yPjaWrLLGUZTqpia+YpvwyAZ+WfeoXX5D
+OsxDKVHOEjJNiIzsL8bV32B14A05RWeeKxQVD0qUTNBs0980IXYskjl6rf/68PNf
+j1H2liYoJxIEa1keAsBgWGBNOdjcMb5W4sYQFRGnfHVXRDiskovB+6C3kxR4JgFq
+QCsD8iU5RUQkF1ijgQuVw6K+Qh/E8FJ+2DH4rBs7JsH9o9fJHxE7nPR7v8VJh6T4
+bFKug1xHVxGfwkhsSqSpQaj7vTtj/c7KdA==
+-----END CERTIFICATE-----
+
+
+
+================================================
+FILE: ca2-csr.pem
+================================================
+-----BEGIN CERTIFICATE REQUEST-----
+MIIEZTCCAk0CAQAwIDEOMAwGA1UECgwFTXlPcmcxDjAMBgNVBAMMBUMyIENBMIIC
+IjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAxY+3HtG65XeAfUv7HstNZSZo
+nAqzxFPas8XKyb/9uyYeps7EQ19kmFVBSUqXOWYAlIkeggx/iSyQ1xdAgWOUgvvs
+4N2JJpSwGZj5vfXnnvSkb32rhXQzSO7udJuk+pdhQ7ei9IpjaVbhoJQpc49S5M3M
+eyBtZ8xwPJYnDXFCcoBkwD4knP39ywB/O0OzKvzBqEvqdyCNnJTwllBcjo2mrEd0
+nVLL2HfplgUEaTeT1yBRedIh3ppfR3S5s7QBJOMKXFJhUBavtDd4ZBRWdtb2MiH7
+X6+1iu5/3l2N7OVDVNfpFznIQGfeyZ14HOjDsJlcEZBHE0lhE+xXoBk3R3p5sm82
++MF9qtTSVBJo4GWtR9gLIrAMqBNYewhjlzYf55z6WyR3GbayrX4UkQbHmWUA82IH
+KeWSxlaX5Y2BRozCQZlRV9bQSNmnuheIp5fBLWIzhKxRJ6Tp2twwUpLlsz4ioZLf
+tANVEc3rzF75oLdg9jjO8P9HgEMk+9zsiLAG3SuWXi76Gwnr2q1thVig5TMHW7GW
+3MFN2KbZP35o2Iz8kY0nYytBsj+ddEBQK2G2zV+IZ4iTln6gdsUlTNEbLQ7kPfIb
+YDW5Xgg4aM8Ddx+bK2e9WISPxNxs68bTTslhqyrQKS+8zgSZb/df9H7tkfjCquv2
+QFDzQ22a5isvfBmjzS8CAwEAAaAAMA0GCSqGSIb3DQEBCwUAA4ICAQBIvt/im5ZU
+FzCihytoU30WOyQ2xGsAGSa/NnMXOc++1P4iIj72bJWBHO12RWbgBrn13VkPVgCQ
+mWSYwGvBcMBe+TZALJYxaffah/6FHeu7Ai2nJiD62+mPh7zzMpETMOHJnMe7EOYr
+cULyqqWSYU/+UQ7PnkJ8UoqI8WR7sF2Xs8ezQB6ouVVDzTJXWHUdyl4CBtltdqv0
+pTuDPqqyhJsEb4ToUbyC3j19SNz0cmdJO4k+sP5W1eCCJO3opTu6j5v9TmbY65i5
+Da2YgSvs1ACiSB0KpiSj65ClPo4434nIfk45De9Acg5T+2By9SUeA1J4X5KCxu+d
+oOxidOxVLS2gIBh9G/kwX3zC9iswvjPT2sML/oewj2N1dr0kgYdCSReTodQv3pXD
+F234gruuPWTABsfjn/Ln4/uhjHydSV5k7CQIgcHQ3J17hQC0mARLpJG+0jIBYD7/
+8G/RJszFOM942vltCZZArOLNzxzNba5SWuQNygfuVCwOiSehoVdvRpC1L/mN3sRn
+hRgKtBKbfV9GPIuJgHRALrgoI7TLq3mWQn2kflhVZfRsfVYjpCV2qL//TTdrAZ1L
+V+mV/A+qW+LLV0Til42aNM4bTWqhYRR0vEC6Ld3bEj+Lv9GNZOMNWPDzG0/lEcuc
+qsD131GOTax6P96zgkrya7a8nZwbi6jlWA==
+-----END CERTIFICATE REQUEST-----
+
+
+
+================================================
+FILE: ca2-key.pem
+================================================
+-----BEGIN PRIVATE KEY-----
+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
+ohL3INV0K5pOaoEODp+N8AfiWMDQ
+-----END PRIVATE KEY-----
+
+
+
+================================================
+FILE: root-cert.pem
+================================================
+-----BEGIN CERTIFICATE-----
+MIIFJTCCAw2gAwIBAgIUHiOig1MafoQJYo5RseQFBbc2xmwwDQYJKoZIhvcNAQEL
+BQAwIjEOMAwGA1UECgwFTXlPcmcxEDAOBgNVBAMMB1Jvb3QgQ0EwHhcNMjYwMzI2
+MDM1MjE2WhcNMzYwMzIzMDM1MjE2WjAiMQ4wDAYDVQQKDAVNeU9yZzEQMA4GA1UE
+AwwHUm9vdCBDQTCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCCAgoCggIBAMSNzdxW
+ccTQTKFEYUp/SfJkGBjaIDvsE08EarjWRs8P33PkklieV3JsgqMgzNZ0dC76UrGg
+LzjXedhMgJbdUhNe0EpNkCYpqr9N6aY5ky49mdWDwbOTQ/MYkhzWkkREy/cHVCvm
+P5b2K3uxBJFLXizE0Bt2I5jG1dMmOZykOJV5P9TGJEGxHSK2Xw0bXeQXod2MFr8/
+oSFiCz2KEY85t7X6/tMb+iXwzske9oQ5CwHZSpOBfYRruLTJGXHLmkgi9y3HFrtc
+wedId8Jo4QnLXUaAmuMoCnD45ggAzlPQDrylLbWdAjb2VLIHCxpvlJ4YjXKTBeMS
+GStR7O5Ft4GqPjLm/EPpYQ5M3+McdgbKgPJfYPvz3zQXThkgfoEeLQW4ZRhS3vML
+Sl/YvzgxUzCdkhO3QlVM2J6evfddymdIljSKkQxVM4dDFcyGwB4dd+MSmrRzpixm
+HHbZ/zldW8hHQn38H9QyQTjJxu4WQYHPpS38XvBRWUJJM/LQvxJZwOnKLzSpfd40
+U9c58J81ZEjPM9cg5Vnvh3Fcl8+ZF4jm0eeQTs4DwrEunOWLZbrJLL1njX29ZA+s
+P3C+7kb5lP8A5lU5CWeE2SJ9Ay4WYS3bMZrfXKzuNJI0OrSBd7Rqoy3FFmDD00DG
+BMr/d5mkmEfQspRMhhNkWCCsL71Nsk6Arj3nAgMBAAGjUzBRMB0GA1UdDgQWBBQd
+CyWecCbI7gOuIOaR6Sr71Yv0ITAfBgNVHSMEGDAWgBQdCyWecCbI7gOuIOaR6Sr7
+1Yv0ITAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4ICAQBdGJVIFko6
+HJVymA+T7Hr/wRnSkFNq+2LI82VeozIc8NAovBBDegcZYgp+iOPIK063IO/pPJh3
+JTxUgxGH9we4o6KctS/MSO37MMgXCkVAJLltzXiAZqgFtnSnnImZg2mjlg2KwAZK
+sSlt86ASGrHqjvdGBbMhG7GL4fns/mRgTjNVvu+MR+UewlIcGtqYvFq7OI+BDUdw
+HWJZ03oiGKftc02Ysc3JhQ+FzWOznfGdzOSadnEuFW2jWPwIlxtTTuXW30+Gsjh+
+Uv5eTiugAhpYVUu++eEDOXWGeEx4sKZxooetWhsTSgsgf+EWqKTMi0eD2oe5I3gM
+XzxTlPs3herS7JvAzY6J0qHq1KfEE4fruxDe0CRLTlk9iSCY4DU7+epB5Ufn65P5
+7lnPlV5S/tmftkEt7rIxjdxc4zJeXF4yPjaWrLLGUZTqpia+YpvwyAZ+WfeoXX5D
+OsxDKVHOEjJNiIzsL8bV32B14A05RWeeKxQVD0qUTNBs0980IXYskjl6rf/68PNf
+j1H2liYoJxIEa1keAsBgWGBNOdjcMb5W4sYQFRGnfHVXRDiskovB+6C3kxR4JgFq
+QCsD8iU5RUQkF1ijgQuVw6K+Qh/E8FJ+2DH4rBs7JsH9o9fJHxE7nPR7v8VJh6T4
+bFKug1xHVxGfwkhsSqSpQaj7vTtj/c7KdA==
+-----END CERTIFICATE-----
+
+
+
+================================================
+FILE: root-cert.srl
+================================================
+17A010804B8E598AB1D6D682FEAD729F11E5B60F
+
+
+
+================================================
+FILE: root-key.pem
+================================================
+-----BEGIN PRIVATE KEY-----
+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
+K3KF4MZ5pCEjfmkFrigwBCGjDyww
+-----END PRIVATE KEY-----
+
+
+
+================================================
+FILE: setup-ca2.sh
+================================================
+#!/bin/bash
+openssl genrsa -out ca2-key.pem 4096
+openssl req -new -key ca2-key.pem -subj "/O=MyOrg/CN=C2 CA" -out ca2-csr.pem
+openssl x509 -req -days 1825 -CA root-cert.pem -CAkey root-key.pem -CAcreateserial -in ca2-csr.pem -out ca2-cert.pem
+cat ca2-cert.pem root-cert.pem > ca2-chain.pem
+kubectl config use-context cluster-2
+kubectl create secret generic cacerts -n istio-system --from-file=ca-cert.pem=ca2-cert.pem --from-file=ca-key.pem=ca2-key.pem --from-file=root-cert.pem=root-cert.pem --from-file=cert-chain.pem=ca2-chain.pem
+kubectl rollout restart deployment/istiod -n istio-system
+kubectl rollout restart deployment --all -n billing-service
 
 
 
@@ -278,11 +663,1904 @@ nodes:
 ================================================
 FILE: kind/restart-clusters.sh
 ================================================
-[Binary file]
+#!/usr/bin/env bash
+# =============================================================================
+# CuraCloud — Multi-Cluster Restart Script
+# Run this after every PC reboot to bring the mesh back online.
+# Usage: bash k8s/kind/restart-clusters.sh
+# =============================================================================
+#
+# Changes from previous version:
+#
+#   STEP 3C — kafka ServiceEntry: resolution: DNS → resolution: STATIC
+#     ${C2_IP} is a raw IP address, not a hostname. "resolution: DNS" tells
+#     Istio to do a DNS lookup on the endpoint address at runtime, which fails
+#     silently on a bare IP. STATIC tells Istio to use the address as-is.
+#
+#   STEP 3C — Added billing-service ServiceEntry (was missing entirely)
+#     patient-service calls billing-service via gRPC (port 9001) across
+#     clusters. Without a ServiceEntry in cluster-1 for billing-service,
+#     istiod has no endpoint record for it and drops every gRPC connection.
+#
+#   STEP 3D — Apply expose-services Gateway (new step)
+#     The Gateway resource (AUTO_PASSTHROUGH on port 15443) may have been
+#     wiped if the istio-system namespace was recreated, or never applied
+#     initially. Re-applying it here on every restart is idempotent and
+#     guarantees the EWG always has its routing instructions.
+#
+#   STEP 3E — Restart application pods after mesh config changes (new step)
+#     After patching meshNetworks and ServiceEntries, already-running pods
+#     hold stale Envoy xDS config. A targeted rollout restart ensures they
+#     pick up the new cross-cluster routing rules without manual intervention.
+#
+# =============================================================================
+
+set -e
+
+ISTIO_BIN="/home/caffeine/istio-1.29.0/bin"
+export PATH="$ISTIO_BIN:$PATH"
+
+# ── Path to your k8s directory (relative to this script's location) ──────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+K8S_DIR="$(dirname "$SCRIPT_DIR")"    # assumes script lives in k8s/kind/
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+info()    { echo -e "${CYAN}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}[OK]${NC}   $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error()   { echo -e "${RED}[ERR]${NC}  $1"; exit 1; }
+
+# ─────────────────────────────────────────────────────────
+# wait_for_webhook <context>
+#
+# The Istio ValidatingWebhookConfiguration intercepts every
+# apply of a networking.istio.io resource and sends it to
+# istiod for validation. If istiod's pod is not yet Ready
+# (common right after a reboot restart), the apiserver
+# cannot reach the webhook and returns:
+#   "Internal error: context deadline exceeded"
+#
+# This function polls until istiod is Ready so every
+# subsequent istio_apply() call is guaranteed to succeed.
+# ─────────────────────────────────────────────────────────
+wait_for_webhook() {
+  local ctx="$1"
+  info "  Waiting for istiod webhook to be Ready on $ctx..."
+  for i in {1..40}; do
+    READY=$(kubectl get pods -n istio-system --context="$ctx" \
+      -l app=istiod --no-headers 2>/dev/null \
+      | awk '{print $2}' | grep -c '^1/1$' || true)
+    if [ "$READY" -ge 1 ]; then
+      success "  istiod is Ready on $ctx"
+      return 0
+    fi
+    [ $i -eq 40 ] && warn "  istiod not Ready after 120s on $ctx — applying anyway"
+    sleep 3
+  done
+}
+
+# istio_apply <context> <file_or_dash>
+# Applies an Istio CRD manifest with webhook-failure-proof logic:
+#   - sets webhook failurePolicy=Ignore before the apply
+#   - applies the manifest (from file or stdin when file="-")
+#   - restores failurePolicy=Fail regardless of outcome
+istio_apply() {
+  local ctx="$1"
+  local file="$2"
+
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Ignore"}]' \
+    2>/dev/null || true
+
+  if [ "$file" = "-" ]; then
+    cat | kubectl apply --context="$ctx" -f -
+  else
+    kubectl apply --context="$ctx" -f "$file"
+  fi
+  local rc=$?
+
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Fail"}]' \
+    2>/dev/null || true
+
+  return $rc
+}
+
+# ─────────────────────────────────────────────────────────
+# STEP 1 — Restart Docker nodes (Kind clusters are just
+#           Docker containers; they stop on PC shutdown)
+# ─────────────────────────────────────────────────────────
+info "Step 1 — Starting Kind cluster Docker containers..."
+
+for node in curacloud-cluster-1-control-plane curacloud-cluster-2-control-plane; do
+  STATUS=$(docker inspect -f '{{.State.Status}}' "$node" 2>/dev/null || echo "missing")
+  if [ "$STATUS" = "running" ]; then
+    success "$node is already running"
+  elif [ "$STATUS" = "exited" ]; then
+    docker start "$node"
+    success "$node started"
+  else
+    error "Container $node not found. Did you delete the clusters? Run the full setup instead."
+  fi
+done
+
+# ─────────────────────────────────────────────────────────
+# STEP 1B — Refresh kubeconfig credentials
+# Kind tokens go stale after a reboot; re-exporting fixes
+# the "Unauthorized" error on kubectl port-forward.
+# ─────────────────────────────────────────────────────────
+info "Step 1B — Refreshing kubeconfig credentials..."
+kind export kubeconfig --name curacloud-cluster-1 &>/dev/null
+kind export kubeconfig --name curacloud-cluster-2 &>/dev/null
+success "kubeconfig refreshed for both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 1C — Fix kubelet.conf IP (Docker may assign new IPs
+#   after a reboot; kubelet.conf has the old IP hardcoded,
+#   causing x509 cert errors and nodes staying NotReady)
+# ─────────────────────────────────────────────────────────
+info "Step 1C — Patching kubelet.conf with current Docker IPs..."
+
+C1_IP_EARLY=$(docker inspect curacloud-cluster-1-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+C2_IP_EARLY=$(docker inspect curacloud-cluster-2-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+
+docker exec curacloud-cluster-1-control-plane \
+  sed -i "s|server: https://[0-9.]*:6443|server: https://${C1_IP_EARLY}:6443|g" \
+  /etc/kubernetes/kubelet.conf
+docker exec curacloud-cluster-2-control-plane \
+  sed -i "s|server: https://[0-9.]*:6443|server: https://${C2_IP_EARLY}:6443|g" \
+  /etc/kubernetes/kubelet.conf
+
+docker exec curacloud-cluster-1-control-plane systemctl restart kubelet
+docker exec curacloud-cluster-2-control-plane systemctl restart kubelet
+
+success "kubelet.conf patched and kubelet restarted on both nodes"
+
+info "  Waiting 30s for nodes to become Ready..."
+sleep 30
+
+for ctx in cluster-1 cluster-2; do
+  for i in {1..15}; do
+    STATUS=$(kubectl get nodes --context="$ctx" --no-headers 2>/dev/null | awk '{print $2}' | head -1)
+    if [ "$STATUS" = "Ready" ]; then
+      success "$ctx node is Ready"
+      break
+    fi
+    [ $i -eq 15 ] && warn "$ctx node still NotReady — continuing anyway"
+    sleep 5
+  done
+done
+
+# ─────────────────────────────────────────────────────────
+# STEP 2 — Wait for API servers to become ready
+# ─────────────────────────────────────────────────────────
+info "Step 2 — Waiting for API servers to be ready..."
+sleep 10
+
+for ctx in cluster-1 cluster-2; do
+  for i in {1..20}; do
+    if kubectl cluster-info --context="$ctx" &>/dev/null; then
+      success "$ctx API server is ready"
+      break
+    fi
+    [ $i -eq 20 ] && error "$ctx API server never became ready"
+    sleep 3
+  done
+done
+
+# ─────────────────────────────────────────────────────────
+# STEP 3 — Fix remote secrets (Docker may assign new IPs
+#           after a reboot, causing cross-cluster timeouts)
+# ─────────────────────────────────────────────────────────
+info "Step 3 — Refreshing remote secrets with current Docker IPs..."
+
+C1_IP=$(docker inspect curacloud-cluster-1-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+C2_IP=$(docker inspect curacloud-cluster-2-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+
+info "  cluster-1 IP → $C1_IP"
+info "  cluster-2 IP → $C2_IP"
+
+# Delete old secrets first (ignore errors if they don't exist)
+kubectl delete secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 --ignore-not-found
+kubectl delete secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 --ignore-not-found
+
+# Recreate with current IPs
+istioctl create-remote-secret \
+  --context=cluster-1 \
+  --name=curacloud-cluster-1 \
+  --server="https://${C1_IP}:6443" | kubectl apply -f - --context=cluster-2
+
+istioctl create-remote-secret \
+  --context=cluster-2 \
+  --name=curacloud-cluster-2 \
+  --server="https://${C2_IP}:6443" | kubectl apply -f - --context=cluster-1
+
+success "Remote secrets updated"
+
+kubectl label secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  kiali.io/multiCluster=true --overwrite
+
+kubectl label secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 \
+  kiali.io/multiCluster=true --overwrite
+# ─────────────────────────────────────────────────────────
+# STEP 3B — Patch East-West Gateways with Node IPs
+# ─────────────────────────────────────────────────────────
+info "Step 3B — Patching East-West Gateways so cross-cluster traffic works without MetalLB..."
+
+kubectl patch svc istio-eastwestgateway -n istio-system --context=cluster-1 \
+  --type='json' -p="[{\"op\": \"add\", \"path\": \"/spec/externalIPs\", \"value\": [\"${C1_IP}\"]}]" || true
+
+kubectl patch svc istio-eastwestgateway -n istio-system --context=cluster-2 \
+  --type='json' -p="[{\"op\": \"add\", \"path\": \"/spec/externalIPs\", \"value\": [\"${C2_IP}\"]}]" || true
+
+success "East-West Gateways patched"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3C — Patch meshNetworks + re-apply ServiceEntries
+#
+# BUG FIX: kafka ServiceEntry changed to resolution: STATIC
+#   ${C2_IP} is a raw IP — "resolution: DNS" performs a DNS
+#   lookup on it at runtime, which fails silently on a bare
+#   IP. STATIC tells Istio to use the address directly.
+#
+# BUG FIX: Added billing-service ServiceEntry (was missing)
+#   patient-service → billing-service is a gRPC call on
+#   port 9001 across clusters. Without this entry istiod on
+#   cluster-1 has no endpoint for billing-service and drops
+#   every connection.
+# ─────────────────────────────────────────────────────────
+info "Step 3C — Patching meshNetworks and re-applying ServiceEntries..."
+
+# Wait for istiod to be Ready on both clusters before applying any Istio CRDs.
+# Skipping this caused "context deadline exceeded" on the validation webhook.
+wait_for_webhook cluster-1
+wait_for_webhook cluster-2
+
+MESH_NETWORKS_YAML="networks:
+  network1:
+    endpoints:
+    - fromRegistry: curacloud-cluster-1
+    gateways:
+    - address: ${C1_IP}
+      port: 15443
+  network2:
+    endpoints:
+    - fromRegistry: curacloud-cluster-2
+    gateways:
+    - address: ${C2_IP}
+      port: 15443"
+
+kubectl patch configmap istio -n istio-system --context=cluster-1 \
+  --type merge -p "{\"data\":{\"meshNetworks\":$(echo "$MESH_NETWORKS_YAML" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}}"
+
+kubectl patch configmap istio -n istio-system --context=cluster-2 \
+  --type merge -p "{\"data\":{\"meshNetworks\":$(echo "$MESH_NETWORKS_YAML" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}}"
+
+# ── kafka: cluster-1 → cluster-2 ─────────────────────────
+# BUG FIX: resolution changed from DNS to STATIC (IP endpoint, not hostname)
+istio_apply cluster-1 - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  hosts:
+  - kafka.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 9092
+    name: tcp-kafka
+    protocol: TCP
+  - number: 29092
+    name: tcp-kafka-internal
+    protocol: TCP
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_IP}
+    ports:
+      tcp-kafka: 15443
+      tcp-kafka-internal: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+
+# ── billing-service: cluster-1 → cluster-2 ───────────────
+# BUG FIX: This ServiceEntry was entirely missing.
+# patient-service (cluster-1) calls billing-service (cluster-2) via gRPC on
+# port 9001. The HTTP port 4001 is included so any future REST calls also
+# route correctly through the east-west gateway.
+istio_apply cluster-1 - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  hosts:
+  - billing-service.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 4001
+    name: http
+    protocol: HTTP
+  - number: 9001
+    name: grpc
+    protocol: GRPC
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_IP}
+    ports:
+      http: 15443
+      grpc: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+
+success "meshNetworks patched and ServiceEntries applied"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3C-DR — Re-apply DestinationRules on cluster-1
+#
+# DestinationRules must be present for cross-cluster mTLS to work.
+# They tell Envoy to use ISTIO_MUTUAL TLS when routing to the EWG.
+# Re-applying is idempotent and ensures they survive namespace wipes.
+# ─────────────────────────────────────────────────────────
+info "Step 3C-DR — Re-applying DestinationRules for cross-cluster mTLS..."
+istio_apply cluster-1 "${SCRIPT_DIR}/manifest/istio/destination-rules.yaml"
+success "DestinationRules re-applied on cluster-1"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3D — Re-apply the AUTO_PASSTHROUGH Gateway resource
+#
+# NEW STEP: The Gateway resource (expose-services.yaml) tells
+# the EWG pods HOW to handle traffic on port 15443. Without
+# it the EWG accepts the TCP connection then immediately
+# closes it. Re-applying on every restart is idempotent and
+# ensures the Gateway is never missing after a reinstall.
+# ─────────────────────────────────────────────────────────
+info "Step 3D — Re-applying AUTO_PASSTHROUGH Gateway on both clusters..."
+
+GATEWAY_YAML='apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cross-network-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: eastwestgateway
+  servers:
+  - port:
+      number: 15443
+      name: tls
+      protocol: TLS
+    tls:
+      mode: AUTO_PASSTHROUGH
+    hosts:
+    - "*.local"'
+
+echo "$GATEWAY_YAML" | istio_apply cluster-1 -
+echo "$GATEWAY_YAML" | istio_apply cluster-2 -
+
+success "AUTO_PASSTHROUGH Gateway applied on both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 4 — Restart istiod to pick up new secrets +
+#           meshNetworks changes
+# (rollout status is best-effort — istiod may take >90s
+#  on resource-constrained nodes; script continues anyway)
+# ─────────────────────────────────────────────────────────
+info "Step 4 — Restarting istiod on both clusters..."
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-1
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-2
+info "  Waiting up to 3 min for istiod on cluster-1..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --timeout=180s || \
+  warn "cluster-1 istiod rollout timed out — continuing anyway (check manually)"
+info "  Waiting up to 3 min for istiod on cluster-2..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=180s || \
+  warn "cluster-2 istiod rollout timed out — continuing anyway (check manually)"
+success "istiod restarted on both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3E — Restart application pods
+#
+# NEW STEP: Pods that were already running before istiod
+# restarted hold stale Envoy xDS config — they won't pick
+# up the new ServiceEntries or meshNetworks changes until
+# their sidecar reconnects and syncs. A rollout restart
+# forces all sidecars to re-initialise against the freshly
+# configured istiod.
+# ─────────────────────────────────────────────────────────
+info "Step 3E — Restarting application pods to sync Envoy xDS config..."
+
+# Restart cluster-1 workloads: api-gateway, patient-service, auth-service
+kubectl rollout restart deployment/api-gateway      -n default --context=cluster-1 || true
+kubectl rollout restart deployment/patient-service  -n default --context=cluster-1 || true
+kubectl rollout restart deployment/auth-service     -n default --context=cluster-1 || true
+
+# Restart cluster-2 workloads: billing-service, analytics-service, kafka, zookeeper
+kubectl rollout restart deployment/billing-service    -n default --context=cluster-2 || true
+kubectl rollout restart deployment/analytics-service  -n default --context=cluster-2 || true
+kubectl rollout restart deployment/kafka              -n default --context=cluster-2 || true
+kubectl rollout restart deployment/zookeeper          -n default --context=cluster-2 || true
+
+success "Application pods restarted"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3F — Refresh kiali-multi-cluster-secret
+#
+# Docker assigns NEW IPs to Kind containers after every reboot.
+# The kiali-multi-cluster-secret contains a kubeconfig with the
+# OLD IP hard-coded in the server field. Kiali will silently fail
+# to connect to cluster-2 until this secret is refreshed.
+# ─────────────────────────────────────────────────────────
+info "Step 3F — Refreshing kiali-multi-cluster-secret with current IPs..."
+
+# The remote secret for cluster-2 was already refreshed in STEP 3
+# (istioctl create-remote-secret --server=https://${C2_IP}:6443).
+# We now extract its kubeconfig and overwrite the kiali secret.
+kubectl get secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  -o jsonpath='{.data.curacloud-cluster-2}' \
+  | base64 -d > /tmp/kiali-cluster2-kubeconfig.yaml
+
+kubectl create secret generic kiali-multi-cluster-secret \
+  -n istio-system --context=cluster-1 \
+  --from-file=curacloud-cluster-2=/tmp/kiali-cluster2-kubeconfig.yaml \
+  --dry-run=client -o yaml \
+  | kubectl apply --context=cluster-1 -f -
+
+rm -f /tmp/kiali-cluster2-kubeconfig.yaml
+
+# Restart Kiali so it picks up the new kubeconfig
+kubectl rollout restart deployment/kiali -n istio-system --context=cluster-1 || true
+
+success "kiali-multi-cluster-secret refreshed and Kiali restarted"
+
+# ─────────────────────────────────────────────────────────
+# STEP 5 — Verify cross-cluster sync
+# ─────────────────────────────────────────────────────────
+info "Step 5 — Verifying cross-cluster sync (waiting 15s for istiod)..."
+sleep 15
+
+echo ""
+echo "  cluster-1 view:"
+istioctl remote-clusters --context=cluster-1
+echo ""
+echo "  cluster-2 view:"
+istioctl remote-clusters --context=cluster-2
+echo ""
+
+# ─────────────────────────────────────────────────────────
+# STEP 6 — Show pod health
+# ─────────────────────────────────────────────────────────
+info "Step 6 — Pod status:"
+echo ""
+echo "  --- cluster-1 (default) ---"
+kubectl get pods --context=cluster-1
+echo ""
+echo "  --- cluster-2 (default) ---"
+kubectl get pods --context=cluster-2
+echo ""
+echo "  --- cluster-1 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-1
+echo ""
+echo "  --- cluster-2 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-2
+
+echo ""
+success "══════════════════════════════════════════════"
+success " CuraCloud mesh is back online! 🚀"
+success "══════════════════════════════════════════════"
+echo ""
+echo "  Quick access commands:"
+echo "  Kiali:      kubectl port-forward svc/kiali      -n istio-system 20001:20001 --context=cluster-1"
+echo "  Grafana:    kubectl port-forward svc/grafana    -n istio-system 3000:3000   --context=cluster-1"
+echo "  Prometheus: kubectl port-forward svc/prometheus -n istio-system 9090:9090   --context=cluster-1"
+echo "  Jaeger:     kubectl port-forward svc/tracing    -n istio-system 16686:80    --context=cluster-1"
+echo ""
+
 
 
 ================================================
-FILE: manifest/application/analytics-service.yaml
+FILE: kind/setup-mesh.sh
+================================================
+#!/usr/bin/env bash
+# =============================================================================
+# CuraCloud — First-Time Setup / Apply All Fixes
+# Run this ONCE after a fresh Istio install on both clusters, or any time
+# you need to reapply everything from scratch (e.g. after wiping istio-system).
+#
+# Prerequisites:
+#   1. Both KinD clusters are running  (kind get clusters should show both)
+#   2. Istio is installed on both clusters using the fixed IstioOperator configs:
+#        istioctl install -f k8s/istio/cluster-1-istio.yaml --context=cluster-1 -y
+#        istioctl install -f k8s/istio/cluster-2-istio.yaml --context=cluster-2 -y
+#   3. kubectl contexts named "cluster-1" and "cluster-2" exist
+#        (run: kind export kubeconfig --name curacloud-cluster-1)
+#        (run: kind export kubeconfig --name curacloud-cluster-2)
+#
+# Usage:
+#   chmod +x k8s/setup-mesh.sh
+#   bash k8s/setup-mesh.sh
+# =============================================================================
+
+set -euo pipefail
+
+ISTIO_BIN="/home/caffeine/istio-1.29.0/bin"
+export PATH="$ISTIO_BIN:$PATH"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
+info()    { echo -e "${CYAN}[INFO]${NC} $1"; }
+success() { echo -e "${GREEN}[OK]${NC}   $1"; }
+warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error()   { echo -e "${RED}[ERR]${NC}  $1"; exit 1; }
+
+# ─────────────────────────────────────────────────────────
+# wait_for_webhook <context>
+#
+# Root cause of the "context deadline exceeded" error:
+#   Istio installs a ValidatingWebhookConfiguration that
+#   intercepts every apply of a networking.istio.io resource
+#   (Gateway, ServiceEntry, VirtualService, etc.) and sends
+#   it to istiod for validation. On a fresh install, or
+#   right after a reboot, istiod's pod may not yet be Ready
+#   and the kube-apiserver cannot reach the webhook endpoint.
+#   The apiserver then returns "Internal error: context
+#   deadline exceeded" and the apply fails hard.
+#
+# This function:
+#   1. Polls until the istiod pod is Running + Ready.
+#   2. Temporarily patches the webhook failurePolicy to
+#      "Ignore" so that — even if the webhook is briefly
+#      unreachable during a timing window — the apply goes
+#      through instead of hard-failing.
+#   3. Applies the resource(s) passed as arguments.
+#   4. Restores failurePolicy back to "Fail" so the webhook
+#      resumes enforcing validation normally.
+# ─────────────────────────────────────────────────────────
+wait_for_webhook() {
+  local ctx="$1"
+  info "  Waiting for istiod webhook to be Ready on $ctx..."
+  for i in {1..40}; do
+    READY=$(kubectl get pods -n istio-system --context="$ctx" \
+      -l app=istiod --no-headers 2>/dev/null \
+      | awk '{print $2}' | grep -c '^1/1$' || true)
+    if [ "$READY" -ge 1 ]; then
+      success "  istiod is Ready on $ctx"
+      return 0
+    fi
+    [ $i -eq 40 ] && warn "  istiod not Ready after 120s on $ctx — applying anyway"
+    sleep 3
+  done
+}
+
+# istio_apply <context> <file_or_dash>
+# Applies an Istio CRD manifest with webhook-failure-proof logic:
+#   - sets failurePolicy=Ignore before the apply
+#   - applies the manifest
+#   - restores failurePolicy=Fail afterward
+# Pass "-" as the file argument to read from stdin.
+istio_apply() {
+  local ctx="$1"
+  local file="$2"
+
+  # Temporarily set webhook to Ignore so a slow-starting
+  # istiod doesn't hard-block the apply
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Ignore"}]' \
+    2>/dev/null || true
+
+  if [ "$file" = "-" ]; then
+    cat | kubectl apply --context="$ctx" -f -
+  else
+    kubectl apply --context="$ctx" -f "$file"
+  fi
+  local rc=$?
+
+  # Always restore to Fail
+  kubectl patch validatingwebhookconfiguration istio-validator-"$ctx" \
+    --context="$ctx" \
+    --type='json' \
+    -p='[{"op":"replace","path":"/webhooks/0/failurePolicy","value":"Fail"}]' \
+    2>/dev/null || true
+
+  return $rc
+}
+
+# ─────────────────────────────────────────────────────────
+# Preflight checks
+# ─────────────────────────────────────────────────────────
+info "Preflight — checking tools and waiting for webhooks..."
+for tool in kubectl istioctl kind docker python3; do
+  command -v "$tool" &>/dev/null || error "'$tool' not found in PATH"
+done
+
+for ctx in cluster-1 cluster-2; do
+  kubectl cluster-info --context="$ctx" &>/dev/null \
+    || error "kubectl context '$ctx' not reachable. Run: kind export kubeconfig --name curacloud-$ctx"
+done
+success "All tools and contexts found"
+
+# Wait for istiod on both clusters before attempting any Istio CRD applies.
+# This prevents the "context deadline exceeded" webhook error that occurs when
+# istiod pods are not yet Ready and the kube-apiserver cannot reach the
+# validation webhook endpoint.
+wait_for_webhook cluster-1
+wait_for_webhook cluster-2
+# (KinD has no cloud LoadBalancer; we use externalIPs on
+#  the EWG service pointing to the Docker node IP instead)
+# ─────────────────────────────────────────────────────────
+info "Resolving Docker node IPs..."
+C1_IP=$(docker inspect curacloud-cluster-1-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+C2_IP=$(docker inspect curacloud-cluster-2-control-plane \
+  --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+
+[[ -z "$C1_IP" ]] && error "Could not get IP for curacloud-cluster-1-control-plane"
+[[ -z "$C2_IP" ]] && error "Could not get IP for curacloud-cluster-2-control-plane"
+
+info "  cluster-1 node IP → $C1_IP"
+info "  cluster-2 node IP → $C2_IP"
+
+# ─────────────────────────────────────────────────────────
+# STEP 1 — Enable sidecar injection on the default namespace
+# Pods need the Envoy sidecar to participate in the mesh.
+# Apply BEFORE deploying workloads; restart them afterward.
+# ─────────────────────────────────────────────────────────
+info "Step 1 — Enabling sidecar injection on namespace 'default'..."
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/namespace.yaml"
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/namespace.yaml"
+success "Sidecar injection label set on default namespace (both clusters)"
+
+# ─────────────────────────────────────────────────────────
+# STEP 2 — Apply the AUTO_PASSTHROUGH Gateway resource
+# This tells the EWG pods what to do with traffic on 15443.
+# Without it the EWG drops every cross-cluster connection.
+# ─────────────────────────────────────────────────────────
+info "Step 2 — Applying AUTO_PASSTHROUGH Gateway on both clusters..."
+istio_apply cluster-1 "${SCRIPT_DIR}/istio/expose-services.yaml"
+istio_apply cluster-2 "${SCRIPT_DIR}/istio/expose-services.yaml"
+success "Gateway/cross-network-gateway applied on both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 3 — Patch East-West Gateway services with node IPs
+# KinD has no cloud LoadBalancer so .status.loadBalancer
+# stays empty. We manually set externalIPs to the Docker
+# node IP so the EWG is reachable from the other cluster.
+# ─────────────────────────────────────────────────────────
+info "Step 3 — Patching EWG services with Docker node IPs..."
+
+kubectl patch svc istio-eastwestgateway -n istio-system --context=cluster-1 \
+  --type='json' -p="[{\"op\":\"add\",\"path\":\"/spec/externalIPs\",\"value\":[\"${C1_IP}\"]}]" || true
+
+kubectl patch svc istio-eastwestgateway -n istio-system --context=cluster-2 \
+  --type='json' -p="[{\"op\":\"add\",\"path\":\"/spec/externalIPs\",\"value\":[\"${C2_IP}\"]}]" || true
+
+success "EWG externalIPs set"
+
+# ─────────────────────────────────────────────────────────
+# STEP 4 — Remote secret exchange
+# Each istiod must be able to query the other cluster's
+# API server to discover services and endpoints.
+# ─────────────────────────────────────────────────────────
+info "Step 4 — Exchanging remote secrets..."
+
+kubectl delete secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 --ignore-not-found
+kubectl delete secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 --ignore-not-found
+
+istioctl create-remote-secret \
+  --context=cluster-1 \
+  --name=curacloud-cluster-1 \
+  --server="https://${C1_IP}:6443" | kubectl apply -f - --context=cluster-2
+
+istioctl create-remote-secret \
+  --context=cluster-2 \
+  --name=curacloud-cluster-2 \
+  --server="https://${C2_IP}:6443" | kubectl apply -f - --context=cluster-1
+
+success "Remote secrets applied"
+
+# ─────────────────────────────────────────────────────────
+# STEP 5 — Patch meshNetworks configmap
+# Tells istiod in each cluster which gateway IP/port to
+# use when routing traffic to the other network.
+# ─────────────────────────────────────────────────────────
+info "Step 5 — Patching meshNetworks on both clusters..."
+
+MESH_NETWORKS_YAML="networks:
+  network1:
+    endpoints:
+    - fromRegistry: curacloud-cluster-1
+    gateways:
+    - address: ${C1_IP}
+      port: 15443
+  network2:
+    endpoints:
+    - fromRegistry: curacloud-cluster-2
+    gateways:
+    - address: ${C2_IP}
+      port: 15443"
+
+MESH_JSON=$(echo "$MESH_NETWORKS_YAML" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')
+
+kubectl patch configmap istio -n istio-system --context=cluster-1 \
+  --type merge -p "{\"data\":{\"meshNetworks\":${MESH_JSON}}}"
+
+kubectl patch configmap istio -n istio-system --context=cluster-2 \
+  --type merge -p "{\"data\":{\"meshNetworks\":${MESH_JSON}}}"
+
+success "meshNetworks patched on both clusters"
+
+# ─────────────────────────────────────────────────────────
+# STEP 6 — Apply ServiceEntries on cluster-1
+#
+# kafka: patient-service publishes events to kafka which
+#   lives only on cluster-2. resolution: STATIC is required
+#   because ${C2_IP} is an IP, not a resolvable hostname.
+#
+# billing-service: patient-service calls billing-service
+#   via gRPC (port 9001) on cluster-2. This ServiceEntry
+#   was entirely missing from the original project.
+# ─────────────────────────────────────────────────────────
+info "Step 6 — Applying ServiceEntries on cluster-1..."
+
+istio_apply cluster-1 - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  hosts:
+  - kafka.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 9092
+    name: tcp-kafka
+    protocol: TCP
+  - number: 29092
+    name: tcp-kafka-internal
+    protocol: TCP
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_IP}
+    ports:
+      tcp-kafka: 15443
+      tcp-kafka-internal: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+
+istio_apply cluster-1 - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  hosts:
+  - billing-service.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 4001
+    name: http
+    protocol: HTTP
+  - number: 9001
+    name: grpc
+    protocol: GRPC
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_IP}
+    ports:
+      http: 15443
+      grpc: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+
+success "ServiceEntries applied on cluster-1"
+
+# ─────────────────────────────────────────────────────────
+# STEP 6B — Apply DestinationRules on cluster-1
+#
+# CRITICAL — without these, cross-cluster traffic FAILS with:
+#   "CERTIFICATE_VERIFY_FAILED: self signed certificate in chain"
+#
+# ServiceEntries route billing-service and kafka to the EWG on
+# port 15443. The EWG uses AUTO_PASSTHROUGH (mTLS), so the
+# outbound sidecar MUST initiate ISTIO_MUTUAL TLS. Without a
+# DestinationRule, Envoy sends plaintext and the TLS handshake
+# fails at the EWG.
+# ─────────────────────────────────────────────────────────
+info "Step 6B — Applying DestinationRules for cross-cluster mTLS..."
+istio_apply cluster-1 "${SCRIPT_DIR}/manifest/istio/destination-rules.yaml"
+success "DestinationRules applied on cluster-1"
+
+# ─────────────────────────────────────────────────────────
+# STEP 7 — Restart istiod to pick up all config changes
+# ─────────────────────────────────────────────────────────
+info "Step 7 — Restarting istiod on both clusters..."
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-1
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-2
+
+info "  Waiting for istiod on cluster-1 (up to 3 min)..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --timeout=180s || \
+  warn "cluster-1 istiod rollout timed out — check manually"
+info "  Waiting for istiod on cluster-2 (up to 3 min)..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=180s || \
+  warn "cluster-2 istiod rollout timed out — check manually"
+success "istiod restarted"
+
+# ─────────────────────────────────────────────────────────
+# STEP 8 — Deploy application manifests
+# ─────────────────────────────────────────────────────────
+info "Step 8 — Deploying infrastructure manifests..."
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/infrastructure/auth-service-db.yaml"
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/infrastructure/patient-service-db.yaml"
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/infrastructure/zookeeper.yaml"
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/infrastructure/kafka.yaml"
+
+info "  Waiting 20s for databases and kafka to initialise..."
+sleep 20
+
+info "Step 8B — Deploying application manifests..."
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/application/auth-service.yaml"
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/application/patient-service.yaml"
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/manifest/application/api-gateway.yaml"
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/application/billing-service.yaml"
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/application/analytics-service.yaml"
+success "All manifests applied"
+
+# ─────────────────────────────────────────────────────────
+# STEP 8C — Install observability stack + Kiali
+#
+# Prometheus must be on BOTH clusters so Kiali can query
+# metrics from each cluster's own Envoy sidecars.
+# Kiali runs only on cluster-1 but monitors both clusters
+# via the kiali-multi-cluster-secret which contains a
+# kubeconfig for cluster-2's API server.
+# The remote RBAC (kiali-remote-rbac.yaml) grants the
+# istio-reader-service-account on cluster-2 the permissions
+# Kiali needs (deployments, pods, portforward, webhooks).
+# ─────────────────────────────────────────────────────────
+info "Step 8C — Installing observability stack..."
+
+KIALI_ADDONS="/home/caffeine/istio-1.29.0/samples/addons"
+
+# Prometheus on both clusters (needed for Kiali metrics from each cluster)
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/prometheus.yaml"
+kubectl apply --context=cluster-2 -f "${KIALI_ADDONS}/prometheus.yaml"
+
+# Grafana + Jaeger on cluster-1 only
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/grafana.yaml"
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/jaeger.yaml"
+
+success "Prometheus/Grafana/Jaeger applied"
+
+# ── Kiali multi-cluster setup ─────────────────────────────
+info "  Installing Kiali with multi-cluster config..."
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/kiali/kiali-multicluster.yaml"
+
+# Apply remote RBAC on cluster-2 so the istio-reader-service-account
+# has the permissions Kiali needs to read workloads and proxy istiod
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/kiali/kiali-remote-rbac.yaml"
+
+# Build the kiali-multi-cluster-secret from the cluster-2 remote secret.
+# This kubeconfig is what Kiali uses to connect to cluster-2's API server.
+info "  Creating kiali-multi-cluster-secret from cluster-2 remote secret..."
+kubectl get secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  -o jsonpath='{.data.curacloud-cluster-2}' \
+  | base64 -d > /tmp/kiali-cluster2-kubeconfig.yaml
+
+kubectl create secret generic kiali-multi-cluster-secret \
+  -n istio-system --context=cluster-1 \
+  --from-file=curacloud-cluster-2=/tmp/kiali-cluster2-kubeconfig.yaml \
+  --dry-run=client -o yaml \
+  | kubectl apply --context=cluster-1 -f -
+
+rm -f /tmp/kiali-cluster2-kubeconfig.yaml
+
+# Label the remote secrets for Kiali's autodetect (belt-and-suspenders)
+kubectl label secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  kiali.io/multiCluster=true --overwrite
+kubectl label secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 \
+  kiali.io/multiCluster=true --overwrite
+
+success "Kiali multi-cluster config applied"
+
+info "  Waiting for Kiali to become Ready (up to 2 min)..."
+kubectl rollout status deployment/kiali -n istio-system --context=cluster-1 --timeout=120s || \
+  warn "Kiali rollout timed out — check manually"
+
+# ─────────────────────────────────────────────────────────
+# STEP 9 — Verify
+# ─────────────────────────────────────────────────────────
+info "Step 9 — Verifying cross-cluster sync (waiting 15s)..."
+sleep 15
+
+echo ""
+echo "  cluster-1 remote clusters:"
+istioctl remote-clusters --context=cluster-1
+echo ""
+echo "  cluster-2 remote clusters:"
+istioctl remote-clusters --context=cluster-2
+echo ""
+
+info "Pod status:"
+echo "  --- cluster-1 (default) ---"
+kubectl get pods --context=cluster-1
+echo ""
+echo "  --- cluster-2 (default) ---"
+kubectl get pods --context=cluster-2
+echo ""
+echo "  --- cluster-1 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-1
+echo ""
+echo "  --- cluster-2 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-2
+
+echo ""
+success "══════════════════════════════════════════════"
+success " CuraCloud mesh is set up! 🚀"
+success "══════════════════════════════════════════════"
+echo ""
+echo "  On every reboot, run instead:"
+echo "    bash k8s/kind/restart-clusters.sh"
+echo ""
+echo "  Quick access:"
+echo "  Kiali:      kubectl port-forward svc/kiali      -n istio-system 20001:20001 --context=cluster-1"
+echo "  Grafana:    kubectl port-forward svc/grafana    -n istio-system 3000:3000   --context=cluster-1"
+echo "  Prometheus: kubectl port-forward svc/prometheus -n istio-system 9090:9090   --context=cluster-1"
+echo "  Jaeger:     kubectl port-forward svc/tracing    -n istio-system 16686:80    --context=cluster-1"
+echo ""
+
+
+
+================================================
+FILE: kind/istio/cluster-1-istio.yaml
+================================================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: curacloud-mesh
+      multiCluster:
+        clusterName: curacloud-cluster-1
+      network: network1
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+  # BUG FIX #1: East-West Gateway was completely missing.
+  # Without this, there is no component in cluster-1 that can accept
+  # cross-cluster traffic arriving from cluster-2, and no way to forward
+  # outbound traffic to cluster-2 services.
+  components:
+    ingressGateways:
+      - name: istio-eastwestgateway
+        label:
+          istio: eastwestgateway
+          app: istio-eastwestgateway
+          # This label tells istiod which network this gateway belongs to,
+          # so it is included in the correct meshNetworks entry.
+          topology.istio.io/network: network1
+        enabled: true
+        k8s:
+          env:
+            # sni-dnat mode makes the gateway perform SNI-based routing,
+            # forwarding traffic to the correct backend service without
+            # terminating TLS. Required for multi-network Istio.
+            - name: ISTIO_META_ROUTER_MODE
+              value: "sni-dnat"
+            # Tells the gateway proxy which networks' endpoints it should
+            # be able to see and forward to.
+            - name: ISTIO_META_REQUESTED_NETWORK_VIEW
+              value: "network1"
+          service:
+            type: LoadBalancer
+            ports:
+              - name: status-port
+                port: 15021
+                targetPort: 15021
+              - name: tls
+                port: 15443
+                targetPort: 15443
+              - name: tls-istiod
+                port: 15012
+                targetPort: 15012
+              - name: tls-webhook
+                port: 15017
+                targetPort: 15017
+
+
+
+================================================
+FILE: kind/istio/cluster-2-istio.yaml
+================================================
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: curacloud-mesh
+      multiCluster:
+        clusterName: curacloud-cluster-2
+      network: network2
+  meshConfig:
+    defaultConfig:
+      proxyMetadata:
+        ISTIO_META_DNS_CAPTURE: "true"
+        ISTIO_META_DNS_AUTO_ALLOCATE: "true"
+
+  # BUG FIX #1: East-West Gateway was completely missing.
+  # Cluster-2 needs its own EWG so that:
+  #  a) Services in cluster-1 can reach kafka and billing-service here.
+  #  b) cluster-2 can reach services in cluster-1 if needed in future.
+  components:
+    ingressGateways:
+      - name: istio-eastwestgateway
+        label:
+          istio: eastwestgateway
+          app: istio-eastwestgateway
+          topology.istio.io/network: network2
+        enabled: true
+        k8s:
+          env:
+            - name: ISTIO_META_ROUTER_MODE
+              value: "sni-dnat"
+            - name: ISTIO_META_REQUESTED_NETWORK_VIEW
+              value: "network2"
+          service:
+            type: LoadBalancer
+            ports:
+              - name: status-port
+                port: 15021
+                targetPort: 15021
+              - name: tls
+                port: 15443
+                targetPort: 15443
+              - name: tls-istiod
+                port: 15012
+                targetPort: 15012
+              - name: tls-webhook
+                port: 15017
+                targetPort: 15017
+
+
+
+================================================
+FILE: kind/istio/exchange-secrets.sh
+================================================
+#!/usr/bin/env bash
+# BUG FIX #3: Remote secret exchange was completely absent from the project.
+#
+# In Istio multi-primary multi-network setup, each cluster's istiod must be
+# able to query the OTHER cluster's Kubernetes API server to discover its
+# services and endpoints. Without this, istiod in cluster-1 has no knowledge
+# of billing-service or kafka running in cluster-2, so it cannot generate the
+# correct Envoy xDS config for routing cross-cluster calls.
+#
+# "istioctl create-remote-secret" creates a Kubernetes Secret containing a
+# kubeconfig that grants read access to the source cluster's API server.
+# When that secret is applied to the target cluster, istiod there uses it
+# to watch services, endpoints, and pods in the source cluster.
+#
+# RUN THIS ONCE after installing Istio on both clusters and before
+# deploying any application workloads.
+
+set -euo pipefail
+
+echo "[INFO] Exchanging remote secrets between clusters..."
+
+# Allow cluster-2's istiod to discover services in cluster-1
+echo "[INFO] Creating remote secret for cluster-1 → apply to cluster-2"
+istioctl create-remote-secret \
+  --context=cluster-1 \
+  --name=curacloud-cluster-1 \
+  | kubectl apply --context=cluster-2 -f -
+
+echo "[OK] cluster-2 can now discover cluster-1 services"
+
+# Allow cluster-1's istiod to discover services in cluster-2
+echo "[INFO] Creating remote secret for cluster-2 → apply to cluster-1"
+istioctl create-remote-secret \
+  --context=cluster-2 \
+  --name=curacloud-cluster-2 \
+  | kubectl apply --context=cluster-1 -f -
+
+echo "[OK] cluster-1 can now discover cluster-2 services"
+
+echo ""
+echo "[INFO] Verifying remote cluster sync (allow ~15s for istiod to sync)..."
+sleep 15
+
+echo "  cluster-1 sees:"
+istioctl remote-clusters --context=cluster-1
+
+echo "  cluster-2 sees:"
+istioctl remote-clusters --context=cluster-2
+
+echo ""
+echo "[OK] Secret exchange complete."
+echo "     Both clusters should now appear in each other's remote-clusters list."
+echo "     If a cluster shows STATUS=istiodNotReady, wait 30s and retry."
+
+
+
+================================================
+FILE: kind/istio/expose-services.yaml
+================================================
+# BUG FIX #2: This Gateway resource was completely missing from the project.
+#
+# Without it, the east-west gateway pods have no instructions on what to do
+# with incoming TLS traffic on port 15443. They will accept the TCP connection
+# but immediately close it, making ALL cross-cluster service calls fail.
+#
+# This Gateway uses AUTO_PASSTHROUGH mode which tells the EWG to inspect the
+# SNI header of every incoming TLS connection and forward it transparently to
+# the matching service endpoint — without terminating the TLS session itself.
+# Istio encodes the target service's FQDN and cluster into the SNI string
+# when a sidecar proxy initiates a cross-cluster call, so the EWG can route
+# it to the right backend purely from that SNI value.
+#
+# APPLY THIS TO BOTH CLUSTERS:
+#   kubectl apply --context=cluster-1 -f expose-services.yaml
+#   kubectl apply --context=cluster-2 -f expose-services.yaml
+#
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: cross-network-gateway
+  namespace: istio-system
+spec:
+  selector:
+    # Targets the east-west gateway pods created by the IstioOperator above.
+    istio: eastwestgateway
+  servers:
+    - port:
+        number: 15443
+        name: tls
+        protocol: TLS
+      tls:
+        # AUTO_PASSTHROUGH: the gateway forwards the TLS stream as-is
+        # based on the SNI value. The destination sidecar terminates mTLS.
+        mode: AUTO_PASSTHROUGH
+      hosts:
+        # "*.local" matches all Kubernetes service FQDNs
+        # (e.g. billing-service.default.svc.cluster.local)
+        - "*.local"
+
+
+
+================================================
+FILE: kind/istio/mesh-networks-patch.sh
+================================================
+#!/usr/bin/env bash
+# Fixes applied to this script:
+#
+#  BUG FIX #5 — Wrong jsonpath for EWG IP
+#    BEFORE: {.spec.externalIPs[0]}
+#    AFTER:  {.status.loadBalancer.ingress[0].ip}
+#    Reason: The east-west gateway is a LoadBalancer service. Its assigned IP
+#    appears in .status.loadBalancer.ingress, not .spec.externalIPs. Using the
+#    wrong path returns an empty string, so meshNetworks and ServiceEntry
+#    endpoints all resolve to an empty address — traffic goes nowhere.
+#
+#    NOTE FOR KIND: KinD does not have a cloud provider, so LoadBalancer
+#    services stay in <pending> unless MetalLB is installed. Install MetalLB
+#    first (https://metallb.universe.tf/installation/) and configure an
+#    address pool covering the Docker bridge subnet (typically 172.18.0.0/24).
+#    Alternative: use the node IP + NodePort by changing the service type to
+#    NodePort in the IstioOperator and adjusting the IP/port extraction below.
+#
+#  BUG FIX #6 — ServiceEntry for kafka uses resolution: DNS with an IP endpoint
+#    BEFORE: resolution: DNS
+#    AFTER:  resolution: STATIC
+#    Reason: "resolution: DNS" tells Istio to treat the endpoint address as a
+#    hostname and resolve it via DNS at runtime. ${C2_EWG} is an IP address,
+#    not a hostname, so DNS resolution fails and no traffic is forwarded.
+#    "resolution: STATIC" tells Istio to use the address as-is.
+#
+#  BUG FIX #7 — Missing ServiceEntry for billing-service on cluster-1
+#    patient-service calls billing-service via gRPC (port 9001) across clusters.
+#    Without a ServiceEntry, cluster-1's istiod has no endpoint for
+#    billing-service.default.svc.cluster.local and drops the connection.
+#    Added a ServiceEntry mirroring the pattern used for kafka.
+
+set -euo pipefail
+
+# BUG FIX #5: Use .status.loadBalancer.ingress[0].ip, not .spec.externalIPs[0]
+C1_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-1 \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+C2_EWG=$(kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-2 \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+if [[ -z "$C1_EWG" ]]; then
+  echo "[ERROR] cluster-1 east-west gateway has no external IP."
+  echo "        If using KinD, install MetalLB and configure an address pool."
+  echo "        Run: kubectl get svc istio-eastwestgateway -n istio-system --context=cluster-1"
+  exit 1
+fi
+if [[ -z "$C2_EWG" ]]; then
+  echo "[ERROR] cluster-2 east-west gateway has no external IP."
+  echo "        If using KinD, install MetalLB and configure an address pool."
+  exit 1
+fi
+
+echo "[INFO] cluster-1 EWG IP: $C1_EWG"
+echo "[INFO] cluster-2 EWG IP: $C2_EWG"
+
+# ── 1. Patch meshNetworks on cluster-1 ────────────────────────────────────────
+kubectl patch configmap istio -n istio-system --context=cluster-1 \
+  --type merge -p "{
+    \"data\": {
+      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
+    }
+  }"
+echo "[OK] meshNetworks patched on cluster-1"
+
+# ── 2. Patch meshNetworks on cluster-2 ────────────────────────────────────────
+kubectl patch configmap istio -n istio-system --context=cluster-2 \
+  --type merge -p "{
+    \"data\": {
+      \"meshNetworks\": \"networks:\\n  network1:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-1\\n    gateways:\\n    - address: ${C1_EWG}\\n      port: 15443\\n  network2:\\n    endpoints:\\n    - fromRegistry: curacloud-cluster-2\\n    gateways:\\n    - address: ${C2_EWG}\\n      port: 15443\\n\"
+    }
+  }"
+echo "[OK] meshNetworks patched on cluster-2"
+
+# ── 3. ServiceEntry for kafka on cluster-1 ────────────────────────────────────
+# BUG FIX #6: Changed resolution from DNS to STATIC.
+# The endpoint address is an IP, not a hostname, so STATIC is required.
+kubectl apply --context=cluster-1 -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  hosts:
+  - kafka.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 9092
+    name: tcp-kafka
+    protocol: TCP
+  - number: 29092
+    name: tcp-kafka-internal
+    protocol: TCP
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_EWG}
+    ports:
+      tcp-kafka: 15443
+      tcp-kafka-internal: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+echo "[OK] ServiceEntry 'kafka-cluster2' created on cluster-1"
+
+# ── 4. ServiceEntry for billing-service on cluster-1 ─────────────────────────
+# BUG FIX #7: This ServiceEntry was entirely missing.
+# patient-service (cluster-1) calls billing-service (cluster-2) via gRPC on
+# port 9001. Without this entry, cluster-1's istiod has no endpoint record
+# for billing-service.default.svc.cluster.local and the gRPC channel fails
+# to establish with "name resolution failure" or an immediate connection reset.
+kubectl apply --context=cluster-1 -f - <<EOF
+apiVersion: networking.istio.io/v1alpha3
+kind: ServiceEntry
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  hosts:
+  - billing-service.default.svc.cluster.local
+  location: MESH_INTERNAL
+  ports:
+  - number: 4001
+    name: http
+    protocol: HTTP
+  - number: 9001
+    name: grpc
+    protocol: GRPC
+  resolution: STATIC
+  endpoints:
+  - address: ${C2_EWG}
+    ports:
+      http: 15443
+      grpc: 15443
+    labels:
+      security.istio.io/tlsMode: istio
+EOF
+echo "[OK] ServiceEntry 'billing-service-cluster2' created on cluster-1"
+
+# ── 5. Restart istiod on both clusters ────────────────────────────────────────
+echo "[INFO] Restarting istiod on both clusters to pick up meshNetworks..."
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-1
+kubectl rollout restart deployment/istiod -n istio-system --context=cluster-2
+
+echo "[INFO] Waiting for istiod on cluster-1..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-1 --timeout=120s
+echo "[INFO] Waiting for istiod on cluster-2..."
+kubectl rollout status deployment/istiod -n istio-system --context=cluster-2 --timeout=120s
+
+echo ""
+echo "[OK] Done! Verifying remote cluster sync..."
+sleep 10
+echo "  cluster-1 view:"
+istioctl remote-clusters --context=cluster-1
+echo "  cluster-2 view:"
+istioctl remote-clusters --context=cluster-2
+
+
+
+================================================
+FILE: kind/kiali/kiali-multicluster.yaml
+================================================
+---
+# Kiali Multi-Cluster Configuration for CuraCloud
+# Installs Kiali on cluster-1 with visibility into both clusters.
+#
+# Kiali discovers remote clusters via Istio remote secrets labeled
+# kiali.io/multiCluster=true. It reads each secret's kubeconfig to
+# connect to the remote cluster's API server and Prometheus.
+#
+# Prerequisites:
+#   - Prometheus installed on BOTH clusters
+#   - Remote secrets created and labeled with kiali.io/multiCluster=true
+#
+---
+# Source: kiali-server/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kiali
+  namespace: "istio-system"
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+...
+---
+# Source: kiali-server/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kiali
+  namespace: "istio-system"
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+data:
+  config.yaml: |
+    additional_display_details:
+    - annotation: kiali.io/api-spec
+      icon_annotation: kiali.io/api-type
+      title: API Documentation
+
+    auth:
+      strategy: anonymous
+
+    # ── Multi-cluster discovery ──────────────────────────────
+    # Kiali auto-detects remote clusters by reading Kubernetes
+    # Secrets in istio-system that carry the label below.
+    # Each secret contains a kubeconfig for the remote cluster.
+    clustering:
+      autodetect_secrets:
+        enabled: true
+        label: "kiali.io/multiCluster=true"
+      clusters: []
+
+    deployment:
+      cluster_wide_access: true
+      image_name: quay.io/kiali/kiali
+      image_pull_policy: IfNotPresent
+      image_version: v2.21
+      instance_name: kiali
+      namespace: istio-system
+      pod_labels:
+        sidecar.istio.io/inject: "false"
+      pod_annotations:
+        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
+      replicas: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          cpu: 10m
+          memory: 64Mi
+      view_only_mode: false
+
+    # ── External services ────────────────────────────────────
+    # Kiali needs to know where Prometheus, Grafana, and Tracing
+    # live so it can query metrics and traces.
+    external_services:
+      custom_dashboards:
+        enabled: true
+      istio:
+        root_namespace: istio-system
+      prometheus:
+        url: "http://prometheus.istio-system:9090"
+      grafana:
+        enabled: true
+        in_cluster_url: "http://grafana.istio-system:3000"
+        url: ""
+      tracing:
+        enabled: true
+        in_cluster_url: "http://tracing.istio-system:16686"
+        url: ""
+        use_grpc: false
+
+    identity:
+      cert_file: ""
+      private_key_file: ""
+
+    kiali_feature_flags:
+      custom_workload_types: []
+      disabled_features: []
+      validations:
+        ignore:
+        - KIA1301
+
+    login_token:
+      signing_key: CHANGEME00000000
+
+    server:
+      observability:
+        metrics:
+          enabled: true
+          port: 9090
+      port: 20001
+      web_root: /kiali
+
+    skipResources: []
+...
+---
+# Source: kiali-server/templates/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kiali
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+rules:
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - endpoints
+  - pods/log
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: [""]
+  resources:
+  - namespaces
+  - pods
+  - replicationcontrollers
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups: [""]
+  resources:
+  - pods/portforward
+  verbs:
+  - create
+  - post
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+  - patch
+- apiGroups:
+  - networking.istio.io
+  - security.istio.io
+  - extensions.istio.io
+  - telemetry.istio.io
+  - gateway.networking.k8s.io
+  - inference.networking.k8s.io
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - patch
+# Needed for multi-cluster: Kiali reads Secrets in istio-system
+# to discover remote cluster kubeconfigs
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["authentication.k8s.io"]
+  resources:
+  - tokenreviews
+  verbs:
+  - create
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+...
+---
+# Source: kiali-server/templates/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kiali
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kiali
+subjects:
+- kind: ServiceAccount
+  name: kiali
+  namespace: "istio-system"
+...
+---
+# Source: kiali-server/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiali
+  namespace: "istio-system"
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+spec:
+  ports:
+  - name: http
+    appProtocol: http
+    protocol: TCP
+    port: 20001
+  - name: http-metrics
+    appProtocol: http
+    protocol: TCP
+    port: 9090
+  selector:
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+...
+---
+# Source: kiali-server/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiali
+  namespace: "istio-system"
+  labels:
+    app: kiali
+    app.kubernetes.io/name: kiali
+    app.kubernetes.io/instance: kiali
+    app.kubernetes.io/part-of: "kiali"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kiali
+      app.kubernetes.io/instance: kiali
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      name: kiali
+      labels:
+        app: kiali
+        app.kubernetes.io/name: kiali
+        app.kubernetes.io/instance: kiali
+        app.kubernetes.io/part-of: "kiali"
+        sidecar.istio.io/inject: "false"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/scheme: "http"
+        kiali.io/dashboards: go,kiali
+        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
+    spec:
+      serviceAccountName: kiali
+      containers:
+      - image: "quay.io/kiali/kiali:v2.21"
+        imagePullPolicy: IfNotPresent
+        name: kiali
+        command:
+        - "/opt/kiali/kiali"
+        - "-config"
+        - "/kiali-configuration/config.yaml"
+        terminationMessagePolicy: FallbackToLogsOnError
+        securityContext:
+          allowPrivilegeEscalation: false
+          privileged: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          capabilities:
+            drop:
+            - ALL
+        ports:
+        - name: api-port
+          containerPort: 20001
+        - name: http-metrics
+          containerPort: 9090
+        readinessProbe:
+          httpGet:
+            path: /kiali/healthz
+            port: api-port
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        livenessProbe:
+          httpGet:
+            path: /kiali/healthz
+            port: api-port
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        startupProbe:
+          httpGet:
+            path: /kiali/healthz
+            port: api-port
+            scheme: HTTP
+          failureThreshold: 6
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+        - name: ACTIVE_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: LOG_LEVEL
+          value: "info"
+        - name: LOG_FORMAT
+          value: "text"
+        - name: LOG_TIME_FIELD_FORMAT
+          value: "2006-01-02T15:04:05Z07:00"
+        - name: LOG_SAMPLER_RATE
+          value: "1"
+        volumeMounts:
+        - name: kiali-configuration
+          mountPath: "/kiali-configuration"
+        - name: kiali-cert
+          mountPath: "/kiali-cert"
+        - name: kiali-secret
+          mountPath: "/kiali-secret"
+        - name: kiali-cabundle
+          mountPath: "/kiali-cabundle"
+        - name: kiali-multi-cluster-secret
+          mountPath: "/kiali-remote-cluster-secrets/kiali-multi-cluster-secret"
+          readOnly: true
+        resources:
+          limits:
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+      volumes:
+      - name: kiali-configuration
+        configMap:
+          name: kiali
+      - name: kiali-cert
+        secret:
+          secretName: istio.kiali-service-account
+          optional: true
+      - name: kiali-secret
+        secret:
+          secretName: kiali
+          optional: true
+      - name: kiali-cabundle
+        configMap:
+          name: kiali-cabundle
+          optional: true
+      - name: kiali-multi-cluster-secret
+        secret:
+          secretName: kiali-multi-cluster-secret
+          optional: true
+...
+
+
+
+================================================
+FILE: kind/kiali/kiali-remote-rbac.yaml
+================================================
+# ClusterRole on the REMOTE cluster (cluster-2) that grants Kiali
+# the permissions it needs to read workloads, services, and Istio
+# config from the remote cluster for multi-cluster dashboard.
+#
+# The remote secret uses the istio-reader-service-account SA,
+# which by default only has read access to basic Istio resources.
+# Kiali needs more permissions to show deployments, pods, etc.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kiali-remote-reader
+  labels:
+    app: kiali
+rules:
+# Core resources Kiali needs to display workloads
+- apiGroups: [""]
+  resources:
+  - configmaps
+  - endpoints
+  - namespaces
+  - pods
+  - pods/log
+  - replicationcontrollers
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+# Workload resources
+- apiGroups: ["extensions", "apps"]
+  resources:
+  - daemonsets
+  - deployments
+  - replicasets
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+# Batch resources
+- apiGroups: ["batch"]
+  resources:
+  - cronjobs
+  - jobs
+  verbs:
+  - get
+  - list
+  - watch
+# Istio networking and security CRDs
+- apiGroups:
+  - networking.istio.io
+  - security.istio.io
+  - extensions.istio.io
+  - telemetry.istio.io
+  - gateway.networking.k8s.io
+  resources: ["*"]
+  verbs:
+  - get
+  - list
+  - watch
+# Port forwarding needed by Kiali to proxy istiod
+- apiGroups: [""]
+  resources:
+  - pods/portforward
+  verbs:
+  - create
+  - post
+# Webhook configs needed for Kiali validation checks
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+# Secrets for reading configs
+- apiGroups: [""]
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kiali-remote-reader
+  labels:
+    app: kiali
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kiali-remote-reader
+subjects:
+- kind: ServiceAccount
+  name: istio-reader-service-account
+  namespace: istio-system
+
+
+
+================================================
+FILE: kind/manifest/namespace.yaml
+================================================
+# BUG FIX #4: Sidecar injection was never enabled.
+#
+# Istio works by injecting an Envoy proxy sidecar into every pod. That sidecar
+# intercepts all inbound and outbound traffic and applies mesh routing rules,
+# mTLS, and telemetry. Without it, pods communicate directly over plain TCP,
+# completely bypassing the service mesh. Cross-cluster traffic via the
+# east-west gateway is impossible because no sidecar exists to encode the
+# target service's SNI or to initiate mTLS.
+#
+# The label "istio-injection: enabled" tells the Istio mutating webhook to
+# automatically inject the sidecar container into every new pod in this
+# namespace.
+#
+# APPLY THIS BEFORE deploying any application manifests:
+#   kubectl apply --context=cluster-1 -f namespace.yaml
+#   kubectl apply --context=cluster-2 -f namespace.yaml
+#
+# After applying, restart existing deployments so pods get injected:
+#   kubectl rollout restart deployment -n default --context=cluster-1
+#   kubectl rollout restart deployment -n default --context=cluster-2
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: default
+  labels:
+    istio-injection: enabled
+
+
+
+================================================
+FILE: kind/manifest/application/analytics-service.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -339,7 +2617,7 @@ data:
 
 
 ================================================
-FILE: manifest/application/api-gateway.yaml
+FILE: kind/manifest/application/api-gateway.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -384,7 +2662,7 @@ spec:
 
 
 ================================================
-FILE: manifest/application/auth-service.yaml
+FILE: kind/manifest/application/auth-service.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -483,7 +2761,7 @@ data:
 
 
 ================================================
-FILE: manifest/application/billing-service.yaml
+FILE: kind/manifest/application/billing-service.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -534,7 +2812,7 @@ spec:
 
 
 ================================================
-FILE: manifest/application/patient-service.yaml
+FILE: kind/manifest/application/patient-service.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -647,7 +2925,7 @@ data:
 
 
 ================================================
-FILE: manifest/infrastructure/auth-service-db.yaml
+FILE: kind/manifest/infrastructure/auth-service-db.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -805,7 +3083,7 @@ data:
 
 
 ================================================
-FILE: manifest/infrastructure/kafka.yaml
+FILE: kind/manifest/infrastructure/kafka.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -892,7 +3170,7 @@ spec:
 
 
 ================================================
-FILE: manifest/infrastructure/patient-service-db.yaml
+FILE: kind/manifest/infrastructure/patient-service-db.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -1186,7 +3464,7 @@ data:
 
 
 ================================================
-FILE: manifest/infrastructure/zookeeper.yaml
+FILE: kind/manifest/infrastructure/zookeeper.yaml
 ================================================
 apiVersion: apps/v1
 kind: Deployment
@@ -1249,5 +3527,56 @@ spec:
       targetPort: 2181
   selector:
     app: zookeeper
+
+
+
+================================================
+FILE: kind/manifest/istio/destination-rules.yaml
+================================================
+# DestinationRules for cross-cluster traffic (cluster-1 → cluster-2)
+#
+# WHY THIS IS REQUIRED:
+#   In Istio multi-network multi-cluster, services on cluster-2 are
+#   represented in cluster-1 by ServiceEntries whose endpoints point
+#   to the East-West Gateway (EWG) IP:15443.
+#
+#   The EWG operates in AUTO_PASSTHROUGH mode: it reads the SNI header
+#   of each incoming TLS connection and forwards it unchanged to the
+#   target service's Envoy sidecar, which terminates the mTLS session.
+#
+#   For this to work, the OUTBOUND sidecar in cluster-1 MUST initiate
+#   mTLS (ISTIO_MUTUAL) to the EWG. Without a DestinationRule setting
+#   tls.mode: ISTIO_MUTUAL, Envoy sends plaintext to the EWG and the
+#   TLS handshake fails with:
+#     "CERTIFICATE_VERIFY_FAILED: self signed certificate in chain"
+#
+#   APPLY TO: cluster-1 only (that is where the clients live).
+#
+---
+# billing-service: patient-service → billing-service via gRPC (9001)
+# and optionally HTTP (4001). Both ports tunnel through EWG on 15443.
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: billing-service-cluster2
+  namespace: default
+spec:
+  host: billing-service.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
+---
+# kafka: patient-service publishes events to kafka (cluster-2) via
+# TCP ports 9092 and 29092. Same EWG tunnel, same TLS requirement.
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: kafka-cluster2
+  namespace: default
+spec:
+  host: kafka.default.svc.cluster.local
+  trafficPolicy:
+    tls:
+      mode: ISTIO_MUTUAL
 
 

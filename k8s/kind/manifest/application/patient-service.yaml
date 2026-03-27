@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - image: patient-service:latest
-          name: patient-service
+          name: patient-service-omkar
           imagePullPolicy: IfNotPresent
           env:
             - name: BILLING_SERVICE_ADDRESS

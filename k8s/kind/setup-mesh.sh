@@ -301,6 +301,22 @@ EOF
 success "ServiceEntries applied on cluster-1"
 
 # ─────────────────────────────────────────────────────────
+# STEP 6B — Apply DestinationRules on cluster-1
+#
+# CRITICAL — without these, cross-cluster traffic FAILS with:
+#   "CERTIFICATE_VERIFY_FAILED: self signed certificate in chain"
+#
+# ServiceEntries route billing-service and kafka to the EWG on
+# port 15443. The EWG uses AUTO_PASSTHROUGH (mTLS), so the
+# outbound sidecar MUST initiate ISTIO_MUTUAL TLS. Without a
+# DestinationRule, Envoy sends plaintext and the TLS handshake
+# fails at the EWG.
+# ─────────────────────────────────────────────────────────
+info "Step 6B — Applying DestinationRules for cross-cluster mTLS..."
+istio_apply cluster-1 "${SCRIPT_DIR}/manifest/istio/destination-rules.yaml"
+success "DestinationRules applied on cluster-1"
+
+# ─────────────────────────────────────────────────────────
 # STEP 7 — Restart istiod to pick up all config changes
 # ─────────────────────────────────────────────────────────
 info "Step 7 — Restarting istiod on both clusters..."
@@ -336,6 +352,70 @@ kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/manifest/application/analyti
 success "All manifests applied"
 
 # ─────────────────────────────────────────────────────────
+# STEP 8C — Install observability stack + Kiali
+#
+# Prometheus must be on BOTH clusters so Kiali can query
+# metrics from each cluster's own Envoy sidecars.
+# Kiali runs only on cluster-1 but monitors both clusters
+# via the kiali-multi-cluster-secret which contains a
+# kubeconfig for cluster-2's API server.
+# The remote RBAC (kiali-remote-rbac.yaml) grants the
+# istio-reader-service-account on cluster-2 the permissions
+# Kiali needs (deployments, pods, portforward, webhooks).
+# ─────────────────────────────────────────────────────────
+info "Step 8C — Installing observability stack..."
+
+KIALI_ADDONS="/home/caffeine/istio-1.29.0/samples/addons"
+
+# Prometheus on both clusters (needed for Kiali metrics from each cluster)
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/prometheus.yaml"
+kubectl apply --context=cluster-2 -f "${KIALI_ADDONS}/prometheus.yaml"
+
+# Grafana + Jaeger on cluster-1 only
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/grafana.yaml"
+kubectl apply --context=cluster-1 -f "${KIALI_ADDONS}/jaeger.yaml"
+
+success "Prometheus/Grafana/Jaeger applied"
+
+# ── Kiali multi-cluster setup ─────────────────────────────
+info "  Installing Kiali with multi-cluster config..."
+kubectl apply --context=cluster-1 -f "${SCRIPT_DIR}/kiali/kiali-multicluster.yaml"
+
+# Apply remote RBAC on cluster-2 so the istio-reader-service-account
+# has the permissions Kiali needs to read workloads and proxy istiod
+kubectl apply --context=cluster-2 -f "${SCRIPT_DIR}/kiali/kiali-remote-rbac.yaml"
+
+# Build the kiali-multi-cluster-secret from the cluster-2 remote secret.
+# This kubeconfig is what Kiali uses to connect to cluster-2's API server.
+info "  Creating kiali-multi-cluster-secret from cluster-2 remote secret..."
+kubectl get secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  -o jsonpath='{.data.curacloud-cluster-2}' \
+  | base64 -d > /tmp/kiali-cluster2-kubeconfig.yaml
+
+kubectl create secret generic kiali-multi-cluster-secret \
+  -n istio-system --context=cluster-1 \
+  --from-file=curacloud-cluster-2=/tmp/kiali-cluster2-kubeconfig.yaml \
+  --dry-run=client -o yaml \
+  | kubectl apply --context=cluster-1 -f -
+
+rm -f /tmp/kiali-cluster2-kubeconfig.yaml
+
+# Label the remote secrets for Kiali's autodetect (belt-and-suspenders)
+kubectl label secret istio-remote-secret-curacloud-cluster-2 \
+  -n istio-system --context=cluster-1 \
+  kiali.io/multiCluster=true --overwrite
+kubectl label secret istio-remote-secret-curacloud-cluster-1 \
+  -n istio-system --context=cluster-2 \
+  kiali.io/multiCluster=true --overwrite
+
+success "Kiali multi-cluster config applied"
+
+info "  Waiting for Kiali to become Ready (up to 2 min)..."
+kubectl rollout status deployment/kiali -n istio-system --context=cluster-1 --timeout=120s || \
+  warn "Kiali rollout timed out — check manually"
+
+# ─────────────────────────────────────────────────────────
 # STEP 9 — Verify
 # ─────────────────────────────────────────────────────────
 info "Step 9 — Verifying cross-cluster sync (waiting 15s)..."
@@ -350,11 +430,17 @@ istioctl remote-clusters --context=cluster-2
 echo ""
 
 info "Pod status:"
-echo "  --- cluster-1 ---"
+echo "  --- cluster-1 (default) ---"
 kubectl get pods --context=cluster-1
 echo ""
-echo "  --- cluster-2 ---"
+echo "  --- cluster-2 (default) ---"
 kubectl get pods --context=cluster-2
+echo ""
+echo "  --- cluster-1 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-1
+echo ""
+echo "  --- cluster-2 (istio-system) ---"
+kubectl get pods -n istio-system --context=cluster-2
 
 echo ""
 success "══════════════════════════════════════════════"
@@ -365,8 +451,8 @@ echo "  On every reboot, run instead:"
 echo "    bash k8s/kind/restart-clusters.sh"
 echo ""
 echo "  Quick access:"
-echo "  Kiali:      kubectl port-forward svc/kiali -n istio-system 20001:20001 --context=cluster-1"
-echo "  Grafana:    kubectl port-forward svc/grafana -n istio-system 3000:3000 --context=cluster-1"
-echo "  Prometheus: kubectl port-forward svc/prometheus -n istio-system 9090:9090 --context=cluster-1"
-echo "  Jaeger:     kubectl port-forward svc/tracing -n istio-system 16686:80 --context=cluster-1"
+echo "  Kiali:      kubectl port-forward svc/kiali      -n istio-system 20001:20001 --context=cluster-1"
+echo "  Grafana:    kubectl port-forward svc/grafana    -n istio-system 3000:3000   --context=cluster-1"
+echo "  Prometheus: kubectl port-forward svc/prometheus -n istio-system 9090:9090   --context=cluster-1"
+echo "  Jaeger:     kubectl port-forward svc/tracing    -n istio-system 16686:80    --context=cluster-1"
 echo ""
